@@ -1,11 +1,13 @@
 """저장소 검토(`policypack review`): 프로필 → 이해 → 의무별 근거 찾기 → 반박 검증 → 체크리스트.
 
 1. 프로필(profile): 규칙 신호로 기능과 플랫폼(웹·모바일 앱·서버)을 알아본다. 모델 호출 0회.
-2. 이해: 조사 모델이 저장소를 읽고 무슨 서비스인지 적고, 신호가 놓친 기능을 더하거나 아닌 기능을 빼고, 개인정보
-   흐름(마디와 화살표)을 그린다. 더하기·빼기·마디·화살표 모두 인용이 관문을 통과해야 받는다. 같은 커밋의 앞 결과를
-   넘기면(`reuse`) 묻지 않고 그 결과를 관문에 다시 걸어 쓴다.
+2. 이해: 조사 모델이 저장소를 읽고 무슨 서비스인지 적고, 기능 목록의 기능마다 있는지 정하고(언어와 상관없이. 규칙
+   신호는 JS·TS 만 보는 단서다), 아닌 기능을 빼고, 플랫폼(웹·모바일 앱·서버)을 적고, 개인정보 흐름(마디와 화살표)을
+   그린다. 기능·빼기·플랫폼·마디·화살표 모두 인용이 관문을 통과해야 받는다. 플랫폼은 프로필이 package.json 으로 가르지
+   못했을 때만 이해 단계의 것을 쓴다. 같은 커밋의 앞 결과를 넘기면(`reuse`) 묻지 않고 그 결과를 관문에 다시 걸어 쓴다.
 3. 의무: 기능에 붙은 의무 전부가 목록 층이다. 그 가운데 검토 층 후보(조문 인용 대조 통과·확신 높음·지위가 아님)와 내장
-   팩(kr-core)이 다루는 의무를 묻는다. 묶음은 의무 하나(기본) 또는 기능 하나(의무 최대 8개)다(`batch`).
+   팩(kr-core)이 다루는 의무를 묻는다. 묶음은 의무 하나(기본), 기능 하나(의무 최대 8개), 또는 표의 묶음(features.yaml
+   의 bundles: 같은 기능·같은 코드 범위를 보는 의무 4개까지)이다(`batch`). 답과 관문은 묶음이어도 의무마다다.
 4. 근거 찾기: 조사 모델이 의무마다 상태와 인용·검색·질문을 낸다. 상태(prompts.STATUS_LABEL)와 받는 조건:
      충족 근거 있음        인용이 관문을 통과해야 한다. 아니면 '저장소 밖에서 확인할 것'
      코드에서 본 것        걸리는 처리의 인용이 관문을 통과해야 한다. 아니면 '저장소 밖에서 확인할 것'
@@ -18,18 +20,23 @@
                            확인할 것'이다(gate). 나이·본인·지역을 확인하는 장치가 없다는 것은 조건이 없다는 증명이
                            아니다: 이용자가 누구인지에 걸리는 의무(features.yaml 의 audience)와 그것을 근거로 든 답
                            (basis '확인 장치 없음')은 '해당 여부부터 확인할 것'
-     충족(덧붙임)          인용이 조문이 요구하는 행위 자체여야 한다(shows '행위'). 이름·기본값뿐이면 '코드에서 본 것'
+     충족(덧붙임)          인용이 조문이 요구하는 행위 자체여야 한다(shows '행위'). 이름·기본값뿐이면 '코드에서 본 것'.
+                           남은 부족한 점(remaining, 없으면 '없음')을 적었으면 '코드에서 본 것'
      걸리는지 모름         '확인할 것'이라도 applies '모름'이면 '해당 여부부터 확인할 것'(그 기능이 있으면 걸리는
                            의무는 빼고)
      해당 여부(덧붙임)     그 기능이 있으면 걸리는 의무를 '해당 여부'로 답해도 그 기능의 처리가 저장소에 있다고
                            보고(applies 예) 인용했으면 '코드에서 본 것'
      자유 입력 추측        이용자가 자유 입력·사진에 넣을 수 있다는 것(trigger '자유 입력 추측')은 걸리는 조건이
-                           아니다. 그것뿐인 '코드에서 본 것'(applies 모름이 아닐 때)은 '걸리지 않는 것으로 보임',
-                           그것을 근거로 한 반박의 뒤집기는 받지 않는다. 해당 여부·저장소 밖은 그대로
+                           아니다. 그것뿐인 '코드에서 본 것'(applies 모름이 아닐 때)은, 그 정보를 받는 입력란·필드·
+                           저장이 없다는 검색이 맞으면 '걸리지 않는 것으로 보임', 아니면 '해당 여부부터'(표시만으로는
+                           목록에서 빼지 않는다). 그것을 근거로 한 반박의 뒤집기는 받지 않는다. 해당 여부·저장소 밖은
+                           그대로
      반대쪽 의무           저장소가 서버만 또는 화면만이면 반대쪽이 하는 의무(features.yaml 의 sides)의 '코드에서
                            본 것'은 '저장소 밖에서 확인할 것'
-     금지 의무             표의 prohibition("~하지 말 것")은 금지된 행위 자체의 인용(shows '금지 행위')이 있어야
-                           '코드에서 본 것'이다. 아니면 '걸리지 않는 것으로 보임'(검색이 맞으면 '해당 없음')
+     금지 의무             표의 prohibition("~하지 말 것")은 금지된 행위 자체나 그 빈틈의 인용(shows '금지 행위'·
+                           '빈틈')이 있어야 '코드에서 본 것'이다. 아니면 '걸리지 않는 것으로 보임'(검색이 맞으면
+                           '해당 없음')
+   모델이 다는 표시 '금지 행위'·'빈틈'은 관문을 통과한 인용이 있을 때만 받는다(marked).
    시험 파일의 줄과 설정 파일의 줄은 인용으로 받지 않는다. 설정 파일이라도 주소(scheme://…)나 호스트 값이 글자 그대로
    있는 줄은 받는다(why: config-value). 요건은 조문 인용에 있는 것만 묻는다.
    특정 품목(주류·도서 등, features.yaml 의 goods) 의무는 프로필에 그 품목 신호가 없으면 묻지 않고 '해당 여부부터
@@ -39,9 +46,11 @@
 5. 반박: 다른 모델이 빼는 답(충족·해당 없음·걸리지 않는 것으로 보임)에는 "지키지 않은 곳을 찾아라", 코드에서 본 것과
    저장소 밖에서 확인할 것에는 "지킨 근거를 찾아라"로 다시 본다. 뒤집는 답도 같은 조건(인용·검색)을 넘어야 받는다
    (judge_rebut: 자유 입력 관문이 옮긴 항목은 입력란·필드·저장의 인용 없이, 금지 의무는 금지 행위의 인용 없이 깨지
-   못하고, 조사와 반박이 같은 모델이면 '충족'으로 올리지 못한다). 앞
+   못하고, 조사와 반박이 같은 모델이면 '충족'으로 올리지 못하고, 남은 부족한 점을 적은 '충족'은 받지 않는다). 앞
    판단이 조문에 없는 요건을 들었는지도 적는다(off_quote). 해당 여부는 사업자의 판단이라 반박하지 않는다. 반박을 끄면
-   (Limits.rebut, CLI --no-rebut) 묻지 않고 verification 은 not-run(why rebut-off), run.rebut 은 false 다.
+   (Limits.rebut, CLI --no-rebut) 묻지 않고 verification 은 not-run(why rebut-off), run.rebut 은 false 다. 반박을
+   '코드에서 본 것'·'충족 근거 있음'에만 걸 수도 있다(Limits.rebut_scope 'found', CLI --rebut-scope found. 나머지는
+   not-run, why rebut-scope).
 6. 체크리스트는 상태의 갈래 순(코드에서 본 것이 맨 위), 그 안에서는 거의 모든 서비스·가입·AI·외부 전송 순이다.
    기능 안에서는 핵심 의무(일반 범위 → 흔한 것 → 확신 높은 것)가 먼저이고 품목 의무가 맨 뒤다. 묻는 순서도 같아서
    상한에 걸려도 핵심은 묻는다. `summary` 에 갈래별 수와 맨 위 다섯 건, 묶음(groups)이 있다.
@@ -81,10 +90,17 @@ summary.groups), not_answered 'goods-not-detected', 인용 why 'profile'(기능�
 PRIORITY = ("common", "signup", "genai", "external-transfer")
 """상한에 걸리면 이 순서로 먼저 묻고, 체크리스트의 같은 갈래 안에서도 이 순서로 놓는다. 나머지는 기능 목록의 순서다."""
 GROUP_MAX = 8
+BUNDLE_MAX = 4
+"""표의 묶음(features.yaml 의 bundles) 하나에 넣는 의무 수의 상한."""
 DROPS = ("evidence-found", "not-applicable", "likely-not-applicable")
 """목록에서 빼는 상태. 반박이 "지키지 않은 곳"을 찾는다."""
 TO_CHECK = ("seen-in-code", "check-outside")
 """반박이 "지킨 근거"를 찾는 상태. 해당 여부(check-applicability)는 사업자의 판단이라 묻지 않는다."""
+FOUND = ("seen-in-code", "evidence-found")
+"""rebut_scope 'found' 에서 반박하는 상태: 코드에서 본 것과 충족 근거 있음."""
+NONE_LEFT = ("", "없음", "none")
+"""남은 부족한 점(remaining)이 없다는 값. 앞뒤 빈칸·마침표를 떼고 견준다. 그 밖의 글은 무엇이든 남은 점이 있다는
+것이다."""
 PLATFORM_KO = {"web": "웹", "mobile": "모바일 앱", "server": "서버"}
 NOT_ANSWERED = {"cost-cap": "저장소당 금액 상한에 걸려 묻지 못했습니다", "time-cap": "시간 상한에 걸렸습니다"}
 SERVER_LANGS = (".py", ".java", ".kt", ".go", ".rb", ".php", ".cs", ".rs", ".scala")
@@ -97,7 +113,7 @@ _VALUE = re.compile(
 GOODS_LABEL = "특정 품목을 판다면 확인할 것"
 FIRST_KEYS = (
     *("answered", "status", "citations", "searches"),
-    *("applies", "condition", "missing", "shows", "basis", "trigger", "gate", "reason", "question"),
+    *("applies", "condition", "missing", "shows", "basis", "trigger", "remaining", "gate", "reason", "question"),
 )
 PRICES = {
     "claude-opus-5-5": (4.0, 5.0, 0.20, 20.0),
@@ -204,8 +220,9 @@ class Limits:
     usd: float = 5.0
     seconds: float = 360.0
     concurrency: int = 6
-    batch: str = "duty"  # duty | feature. 11/11 실측(사례 4곳): duty 가 의무마다 인용이 많고 비용은 1.8배, 시간은 비슷
+    batch: str = "duty"  # duty | feature | bundle. 11/11 실측(사례 4곳): duty 가 의무마다 인용이 많고 비용은 1.8배
     rebut: bool = True  # False 면 반박을 묻지 않는다(verification not-run, why rebut-off). 웹의 기본은 켬
+    rebut_scope: str = "all"  # all | found(코드에서 본 것·충족 근거 있음만 반박. 나머지는 not-run, why rebut-scope)
 
 
 # ── 인용 ─────────────────────────────────────────────────────────────
@@ -258,6 +275,11 @@ def _sides() -> dict[str, set[str]]:
 def _goods() -> dict[str, dict]:
     """특정 품목을 팔 때만 걸리는 의무 → 그 품목(features.yaml 의 goods)."""
     return {d: g for g in load_features().get("goods") or [] for d in g["duties"]}
+
+
+def _bundles() -> dict[str, str]:
+    """한 질문에 묶어 묻는 의무 → 묶음 id (features.yaml 의 bundles)."""
+    return {d: b["id"] for b in load_features().get("bundles") or [] for d in b["duties"]}
 
 
 def core_key(d: dict) -> tuple:
@@ -314,6 +336,17 @@ def lacks(root: Path, platforms: list[str]) -> str | None:
 SIDE_KO = {"screen": "화면", "server": "서버"}
 
 
+def marked(s: dict, cs: list[dict]) -> str | None:
+    """답이 단 표시('금지 행위'·'빈틈')는 관문을 통과한 인용이 있을 때만 받는다. 표시는 모델이 스스로 달아서
+    (11/13 5·6배치: 조건의 줄에도 '빈틈'을 달았다) 그것만으로는 규칙을 바꾸지 않는다. 받으면 그 표시, 아니면 None."""
+    return s["shows"] if s.get("shows") in ("금지 행위", "빈틈") and grounded(cs) else None
+
+
+def left(s: dict) -> bool:
+    """'충족'이라 답하면서 남은 부족한 점(remaining)을 적었다. 비었거나 '없음'이면 아니다."""
+    return str(s.get("remaining") or "").strip().strip(".").strip().lower() not in NONE_LEFT
+
+
 def other_side(
     d: dict, status: str, gate_: dict | None, lacking: str | None, s: dict | None = None, cs: list | None = None
 ) -> tuple[str, dict | None]:
@@ -322,7 +355,7 @@ def other_side(
     관리자 화면 보호가 상수 "true" 로 고정된 것을 '저장소 밖'으로 보냈다)."""
     if status != "seen-in-code" or not lacking or d["id"] not in _sides().get(lacking, set()):
         return status, gate_
-    if s and s["shows"] in ("빈틈", "금지 행위") and grounded(cs or []):
+    if s and marked(s, cs or []):
         return status, gate_
     where = SIDE_KO[lacking]
     note = f"이 저장소에는 {where} 코드가 없어 {where}에서 하는 의무는 '저장소 밖에서 확인할 것'으로 옮겼습니다."
@@ -352,6 +385,7 @@ def said(r: dict) -> dict:
         "trigger": r.get("trigger") if r.get("trigger") in P.TRIGGER else None,
         "missing": str(r.get("missing") or "").strip()[:300],
         "shows": r.get("shows") if r.get("shows") in P.SHOWS else None,
+        "remaining": str(r.get("remaining") or "").strip()[:300],
     }
 
 
@@ -401,8 +435,12 @@ def _missing(note: str, s: dict) -> str:
 
 
 PROHIBITION_NOTE = (
-    "금지 의무라 금지된 행위 자체를 인용하지 않으면 '코드에서 본 것'으로 받지 않았습니다(막는 장치가 없다는 것은 근거가"
-    " 아닙니다)."
+    "금지 의무라 금지된 행위 자체나 그 빈틈을 인용하지 않으면 '코드에서 본 것'으로 받지 않았습니다(막는 장치가 없다는"
+    " 것은 근거가 아닙니다)."
+)
+FREE_UNPROVEN_NOTE = (
+    "걸리는 조건이 이용자가 자유 입력·사진에 넣을 수 있다는 추측뿐이라는 답인데, 그 정보를 받는 입력란·필드·저장이"
+    " 없다는 검색 증명이 없어 '해당 여부부터 확인할 것'으로 옮겼습니다."
 )
 GUESSED_HINT = (
     "\n  앞 판단의 조건은 자유 입력 추측뿐이었다. 뒤집으려면 그 정보를 받는 입력란·필드·저장 코드를 인용하고"
@@ -437,7 +475,10 @@ def _accept(d: dict, s: dict, answered: str, cs: list[dict], proven: bool, featu
         return absent(d, s, proven, feature, grounded(cs))
     if answered == "seen-in-code" and s["applies"] != "모름" and (gate_ := guess(d, s, answered, feature)):
         # '코드에서 본 것' 후보를 내릴 때만 쓴다. '해당 여부'(사업자인지 모름 등)는 그대로 둔다(11/13 실측: 모델이 이
-        # 표시를 "사업자 해당 여부를 모른다"는 뜻으로 달아 '해당 여부'가 '걸리지 않는 듯'으로 내려갔다)
+        # 표시를 "사업자 해당 여부를 모른다"는 뜻으로 달아 '해당 여부'가 '걸리지 않는 듯'으로 내려갔다). 목록에서 빼는
+        # 것은 그 정보를 받는 입력란·필드·저장이 없다는 검색을 도구가 다시 돌려 맞을 때뿐이다(표시만으로는 빼지 않는다)
+        if not proven:
+            return "check-applicability", {**gate_, "note": FREE_UNPROVEN_NOTE}
         gate_["note"] += " '걸리지 않는 것으로 보임'으로 옮겼습니다."
         return "likely-not-applicable", gate_
     if answered == "check-applicability" and _always(d, feature) and s["applies"] == "예" and grounded(cs):
@@ -447,12 +488,18 @@ def _accept(d: dict, s: dict, answered: str, cs: list[dict], proven: bool, featu
         return "seen-in-code", {"from": answered, "why": "condition-present", "note": _missing(note, s)}
     if answered in TO_CHECK and (gate_ := unknown(d, s, answered, feature)):
         return "check-applicability", gate_
-    if answered == "seen-in-code" and d.get("prohibition") and s["shows"] != "금지 행위":
-        # 11/13 실측: 가짜 마감 타이머·'반품 불가' 문구를 찾지 못하고도 "막는 장치가 없다"며 코드에서 본 것으로 뒀다
+    if answered == "seen-in-code" and d.get("prohibition") and not marked(s, cs):
+        # 11/13 실측: 가짜 마감 타이머·'반품 불가' 문구를 찾지 못하고도 "막는 장치가 없다"며 코드에서 본 것으로 뒀다.
+        # 금지된 행위가 일어나게 하는 빈틈을 인용했으면(shows '빈틈', 관문 통과) 둔다(11/13 7배치: 'BEST' 정렬의
+        # 판매량을 브라우저가 보낸 값으로 바꾸는 줄을 '빈틈'으로 달아 '해당 없음'으로 내려갔다)
         status = "not-applicable" if proven else "likely-not-applicable"
         return status, {"from": answered, "why": "prohibition", "note": PROHIBITION_NOTE}
     if answered in ("evidence-found", "seen-in-code") and not grounded(cs):
         return "check-outside", None
+    if answered == "evidence-found" and left(s):
+        # 11/13 실측: 접근권한 최소화를 '충족'으로 답하면서 "탈퇴 API 는 본인 여부를 확인하지 않는다"고 적었다
+        note = f"'충족'이라 답하면서 남은 부족한 점을 적어 '코드에서 본 것'으로 옮겼습니다: {s['remaining']}."
+        return "seen-in-code", {"from": answered, "why": "remaining-gap", "note": note}
     if answered == "evidence-found" and s["shows"] != "행위":
         # 11/12 실측: helmet 의 기본 HSTS 만으로 전송 암호화 충족, 메뉴의 'GenAI' 글자로 AI 사전 고지 충족
         note = "인용이 조문이 요구하는 행위가 아니라 이름·기본값뿐이라 '충족 근거 있음'으로 받지 않았습니다."
@@ -496,6 +543,7 @@ class Run:
     limits: Limits
     spend: Spend
     lacks: str | None = None
+    platforms_from: str = "signal"
     questions: list[dict] = field(default_factory=list)
     t0: float = field(default_factory=time.monotonic)
     _lock: threading.Lock = field(default_factory=threading.Lock)
@@ -568,15 +616,25 @@ def _found_lines(prof: dict) -> str:
     return "\n".join(rows) or "- (없음)"
 
 
-def _platforms(prof: dict) -> str:
-    return ", ".join(PLATFORM_KO[p] for p in prof.get("platforms", [])) or "알 수 없음(package.json 으로 가르지 못함)"
+def _platforms(platforms: list[str]) -> str:
+    return ", ".join(PLATFORM_KO[p] for p in platforms) or "알 수 없음(package.json 으로 가르지 못함)"
+
+
+def platforms_of(prof: dict, und: dict) -> tuple[list[str], str]:
+    """(플랫폼, 출처). 프로필이 package.json 으로 가른 것이 먼저다. 가르지 못했으면(JS·TS 가 없는 저장소) 이해 단계가
+    인용과 함께 적은 것(관문 통과)을 쓴다."""
+    if prof.get("platforms"):
+        return list(prof["platforms"]), "signal"
+    said_ = {p["platform"] for p in und.get("platforms") or []}
+    found = [p for p in PLATFORM_KO if p in said_]
+    return found, ("model" if found else "none")
 
 
 def understand(run: Run, prof: dict, catalog: dict[str, str]) -> dict:
     budget = 40
     prompt = P.UNDERSTAND.format(
         found=_found_lines(prof),
-        platforms=_platforms(prof),
+        platforms=_platforms(prof.get("platforms", [])),
         catalog="\n".join(f"- {k}: {v}" for k, v in catalog.items()),
         budget=budget,
         cite=P.CITE,
@@ -587,14 +645,15 @@ def understand(run: Run, prof: dict, catalog: dict[str, str]) -> dict:
 
 
 def _understood(root: Path, doc: dict | None, catalog: dict[str, str], reused: bool = False) -> dict:
-    """이해 단계의 답(또는 앞 결과에서 되살린 같은 꼴)을 관문에 건다."""
-    out = {"summary": "", "added": [], "removed": [], "nodes": [], "edges": [], "rejected_claims": 0, "answered": False}
-    out["reused"] = reused
+    """이해 단계의 답(또는 앞 결과에서 되살린 같은 꼴)을 관문에 건다. 있다고 본 기능은 features(전에는 features_added)
+    다. 신호가 찾은 기능을 확인한 것도 여기 온다(그 기능의 출처에 model 이 붙는다)."""
+    out = {"summary": "", "added": [], "removed": [], "platforms": [], "nodes": [], "edges": []}
+    out |= {"rejected_claims": 0, "answered": False, "reused": reused}
     if doc is None:
         return out
     out["answered"] = True
     out["summary"] = str(doc.get("summary") or "")[:800]
-    for key, dest in (("features_added", "added"), ("features_removed", "removed")):
+    for key, dest in (("features", "added"), ("features_added", "added"), ("features_removed", "removed")):
         for item in doc.get(key) or []:
             if not isinstance(item, dict) or item.get("feature") not in catalog:
                 continue
@@ -604,6 +663,14 @@ def _understood(root: Path, doc: dict | None, catalog: dict[str, str], reused: b
                 out[dest].append(rec)
             else:
                 out["rejected_claims"] += 1
+    for item in doc.get("platforms") or []:
+        if not isinstance(item, dict) or item.get("platform") not in PLATFORM_KO:
+            continue
+        cs = check(root, P.citations_of(item))
+        if grounded(cs):
+            out["platforms"].append({"platform": item["platform"], "citations": cs})
+        else:
+            out["rejected_claims"] += 1
     flow = doc.get("flow") if isinstance(doc.get("flow"), dict) else {}
     kept: set[str] = set()
     for n in flow.get("nodes") or []:
@@ -651,6 +718,7 @@ def from_previous(root: Path, prev: dict, catalog: dict[str, str]) -> dict:
         "features_removed": [
             {"feature": f["id"], **f["removed"]} for f in prof.get("features", []) if isinstance(f.get("removed"), dict)
         ],
+        "platforms": prof.get("platform_evidence", []),
         "flow": {"nodes": flow.get("nodes", []), "edges": flow.get("edges", [])},
     }
     return _understood(root, doc, catalog, reused=True)
@@ -782,9 +850,10 @@ def judge_rebut(
     조건이 없다는 답과 검색 증명)이다. 해당 없음은 조사 답과 같은 관문(absent)을 넘어야 받는다. 더해서
     - 자유 입력 추측으로 깨거나, 자유 입력 관문이 옮긴 항목을 그 정보를 받는 입력란·필드·저장의 인용(applies '예') 없이
       깨면 받지 않는다(free-input)
-    - 금지 의무는 금지된 행위 자체의 인용(shows '금지 행위') 없이 깨지 못한다(prohibition)
+    - 금지 의무는 금지된 행위 자체나 그 빈틈의 인용(shows '금지 행위'·'빈틈', 관문 통과) 없이 깨지 못한다(prohibition)
     - 조사와 반박이 같은 모델이면 '충족'으로 올리지 못한다(same-model. 11/13 실측: 약관의 면책 한 줄로 AI 사전 고지를
-      충족으로 올렸다)"""
+      충족으로 올렸다)
+    - 남은 부족한 점을 적은 '충족'은 받지 않는다(remaining-gap)"""
     cs = check(root, P.citations_of(r))
     searches, proven = prove(root, P.searches_of(r))
     s = said(r)
@@ -808,7 +877,7 @@ def judge_rebut(
         rec["gate"], after, ok = free, to, False
     elif before in DROPS and guessed and not proper:  # 11/13 실측: 표시만 '입력란'으로 바꿔 다시 올렸다
         rec["gate"], after, ok = {"from": to, "why": "free-input", "note": GUESSED_NOTE}, to, False
-    elif before in DROPS and d.get("prohibition") and s["shows"] != "금지 행위":
+    elif before in DROPS and d.get("prohibition") and not marked(s, cs):
         rec["gate"], after, ok = {"from": to, "why": "prohibition", "note": PROHIBITION_NOTE}, to, False
     elif before in DROPS:
         rec["gate"] = unknown(d, s, "seen-in-code", feature)
@@ -817,6 +886,9 @@ def judge_rebut(
     elif claimed == "evidence-found" and same_model:
         rec["gate"] = {"from": claimed, "why": "same-model", "note": SAME_MODEL_NOTE}
         after, ok = claimed, False
+    elif claimed == "evidence-found" and left(s):
+        note = f"'충족'이라 하면서 남은 부족한 점을 적어 뒤집기를 받지 않았습니다: {s['remaining']}."
+        rec["gate"], after, ok = {"from": claimed, "why": "remaining-gap", "note": note}, claimed, False
     elif claimed == "evidence-found":
         after, ok = claimed, grounded(cs) and s["shows"] == "행위"
     else:
@@ -833,6 +905,15 @@ def rebut(
         return {}
     if not run.limits.rebut:
         return {d["id"]: {"result": "not-run", "why": "rebut-off"} for d in items}
+    out: dict[str, dict] = {}
+    if run.limits.rebut_scope == "found":
+        # 코드에서 본 것과 충족 근거 있음만 반박한다. 저장소 밖, 해당 없음, 걸리지 않는 것으로 보임은 묻지 않는다
+        out = {
+            d["id"]: {"result": "not-run", "why": "rebut-scope"} for d in items if first[d["id"]]["status"] not in FOUND
+        }
+        items = [d for d in items if d["id"] not in out]
+        if not items:
+            return out
     budget = _budget(len(items), 15, 3, 35)
     blocks = []
     for d in items:
@@ -862,8 +943,7 @@ def rebut(
     meta = {"feature": group[0]["feature"], "duties": [d["id"] for d in items]}
     doc, failure, qn = run.ask("rebut", run.checker, prompt, budget, meta, "results")
     if failure in ("cost-cap", "time-cap") and doc is None and not run.questions[qn].get("calls"):
-        return {d["id"]: {"result": "not-run", "why": failure, "q": qn} for d in items}
-    out: dict[str, dict] = {}
+        return out | {d["id"]: {"result": "not-run", "why": failure, "q": qn} for d in items}
     by_id = {d["id"]: d for d in items}
     same = run.investigator.model == run.checker.model
     for r in (doc or {}).get("results") or []:
@@ -957,10 +1037,15 @@ def _item(d: dict, first: dict, check_: dict | None, static: list[dict]) -> dict
         "verification": verification,
         "citations": citations,
         "searches": searches,
-        "missing": verification.get("missing", "") if overturned else first["missing"],
+        "missing": verification.get("missing", "") if overturned else (first["missing"] or _left_of(first)),
         "question": first["question"],
         "reason": first["reason"] if status == first["status"] else verification.get("reason", ""),
     }
+
+
+def _left_of(first: dict) -> str:
+    """'충족'이라 하면서 적은 남은 부족한 점으로 '코드에서 본 것'이 된 항목의 없는 것."""
+    return first.get("remaining", "") if (first.get("gate") or {}).get("why") == "remaining-gap" else ""
 
 
 def arrange(checklist: list[dict]) -> list[dict]:
@@ -1046,9 +1131,23 @@ def select(prof: dict, und: dict, static: dict[str, list[dict]]) -> tuple[list[d
 
 
 def groups_of(review: list[dict], batch: str) -> list[list[dict]]:
+    """질문 하나에 넣는 의무들. duty 는 하나씩, feature 는 기능마다(GROUP_MAX 까지), bundle 은 표의 묶음마다(묶음은
+    첫 의무의 자리에서 묻는다. 표에 없는 의무는 하나씩)."""
     if batch == "duty":
         return [[d] for d in review]
     out: list[list[dict]] = []
+    if batch == "bundle":
+        of, at = _bundles(), {}
+        for d in review:
+            b = of.get(d["id"])
+            if b is None:
+                out.append([d])
+            elif b in at:
+                out[at[b]].append(d)
+            else:
+                at[b] = len(out)
+                out.append([d])
+        return out
     for d in review:
         if out and out[-1][0]["feature"] == d["feature"] and len(out[-1]) < GROUP_MAX:
             out[-1].append(d)
@@ -1070,7 +1169,7 @@ def plan(root: Path, use_static: bool = True) -> dict:
         "review": len(review),
         "goods_not_asked": sum(d["id"] in _goods() for d in skipped),
         "not_generative": sum(d["id"] not in _goods() for d in skipped),
-        "questions": {b: len(groups_of(review, b)) for b in ("feature", "duty")},
+        "questions": {b: len(groups_of(review, b)) for b in ("feature", "bundle", "duty")},
         "static_error": err,
     }
 
@@ -1093,14 +1192,15 @@ def review(
     run = Run(root, investigator, checker, limits, Spend(limits.usd), t0=t0)
 
     prof = profile(root)
-    run.lacks = lacks(root, prof["platforms"])
     static, static_err = static_results(root) if use_static else ({}, None)
     catalog = {f["id"]: f["name"] for f in load_features()["features"]}
     und = from_previous(root, reuse, catalog) if reuse is not None else understand(run, prof, catalog)
+    platforms, run.platforms_from = platforms_of(prof, und)
+    run.lacks = lacks(root, platforms)
     features, listed, review_duties, skipped = select(prof, und, static)
     by_feature = {f["id"]: f for f in features}
     groups = groups_of(review_duties, limits.batch)
-    plats = _platforms(prof)
+    plats = _platforms(platforms)
 
     def work(group: list[dict]) -> tuple[dict, dict]:
         feature = by_feature.get(group[0]["feature"])
@@ -1120,6 +1220,7 @@ def review(
         + [_goods_item(d, goods[d["id"]]) if d["id"] in goods else _not_generative_item(d) for d in skipped]
     )
     seconds = time.monotonic() - t0
+    prof = {**prof, "platforms": platforms}
     return _report(run, prof, und, features, listed, checklist, static, static_err, seconds, throttles)
 
 
@@ -1130,7 +1231,7 @@ def _report(run: Run, prof, und, features, listed, checklist, static, static_err
     searches = [s for q in checklist for s in (q["first"] or {}).get("searches", [])]
     searches += [s for q in checklist for s in q["verification"].get("searches", [])]
     cites += [c for q in checklist for c in q["verification"].get("citations", [])]
-    for part in ("nodes", "edges"):
+    for part in ("platforms", "nodes", "edges"):
         cites += [c for x in und[part] for c in x["citations"]]
     masked: dict[str, int] = {}
     refused: set[str] = set()
@@ -1162,6 +1263,10 @@ def _report(run: Run, prof, und, features, listed, checklist, static, static_err
         "profile": {
             "commit": commit_of(run.root),
             "platforms": prof["platforms"],
+            # signal: package.json 으로 가름, model: 가르지 못해 이해 단계가 인용과 함께 적은 것(platform_evidence),
+            # none: 둘 다 없음
+            "platforms_from": run.platforms_from,
+            "platform_evidence": und["platforms"],
             "summary": und["summary"],
             "features": features,
             "test_only": prof["test_only"],
@@ -1192,6 +1297,7 @@ def _report(run: Run, prof, und, features, listed, checklist, static, static_err
                 "verify": run.checker.model if run.limits.rebut else "none",
             },
             "rebut": run.limits.rebut,
+            "rebut_scope": run.limits.rebut_scope,
             "batch": run.limits.batch,
             # 저장소에 없는 쪽(screen: 서버만, server: 화면만). 그쪽 의무의 '코드에서 본 것'은 '저장소 밖'으로 옮긴다
             "lacks": run.lacks,

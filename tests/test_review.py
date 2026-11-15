@@ -194,7 +194,7 @@ def _valid(doc: dict) -> None:
     assert not errors, [f"{list(e.path)}: {e.message[:200]}" for e in errors[:5]]
 
 
-@pytest.mark.parametrize("batch", ["duty", "feature"])
+@pytest.mark.parametrize("batch", ["duty", "feature", "bundle"])
 def test_the_whole_path_runs_on_fake_answers_and_matches_the_schema(tmp_path, batch):
     doc, log = _run(_repo(tmp_path), batch, use_static=batch == "duty")
     _valid(doc)
@@ -298,6 +298,13 @@ def test_the_whole_path_runs_on_fake_answers_and_matches_the_schema(tmp_path, ba
         kid = next(i for i in items if i["duty"] == "pipa-22-2-1")
         assert kid["krcore"] and kid["static"] and kid["static"][0]["file"] == "src/routes/signup.ts"
         assert all(len(q.get("duties", [])) <= 1 for q in run["questions"] if q["stage"] == "investigate")
+    if batch == "bundle":  # 표의 묶음마다 한 질문(4개까지), 표에 없는 의무는 하나씩. 답은 의무마다다
+        bundles = rv._bundles()
+        asked = [q["duties"] for q in run["questions"] if q["stage"] == "investigate"]
+        assert any(len(ds) > 1 for ds in asked) and all(len(ds) <= rv.BUNDLE_MAX for ds in asked)
+        assert all(len({bundles.get(d) for d in ds}) == 1 and bundles.get(ds[0]) for ds in asked if len(ds) > 1)
+        assert sorted(d for ds in asked for d in ds) == sorted(i["duty"] for i in items if i["asked"])
+    assert run["batch"] == batch and run["rebut_scope"] == "all"
 
 
 def test_a_saved_understanding_is_reused_without_asking(tmp_path):
@@ -620,12 +627,16 @@ def test_a_cut_search_says_the_total_and_the_gate_matches_it(tmp_path):
 def test_a_guess_about_free_input_is_not_a_condition(tmp_path):
     """이용자가 자유 입력·사진에 그 정보를 넣을 수 있다는 추측은 걸리는 조건이 아니다(11/13 실측: 채팅 입력에
     민감정보가, 인증 사진에 신분증이 들어올 수 있다며 반박이 '해당 없음'을 '해당 여부부터'로 뒤집었다). 조사 답이면
-    '걸리지 않는 것으로 보임', 반박의 뒤집기면 받지 않는다. 그 기능이 있으면 걸리는 의무와 이용자 의무는 그대로다."""
+    '걸리지 않는 것으로 보임', 반박의 뒤집기면 받지 않는다. 그 기능이 있으면 걸리는 의무와 이용자 의무는 그대로다.
+    표시는 모델이 스스로 달아서, 목록에서 빼는 것은 그 정보를 받는 입력란·필드·저장이 없다는 검색을 도구가 다시 돌려
+    맞을 때뿐이다. 아니면 '해당 여부부터'다(11/15)."""
     ok = [{"file": "a.ts", "line": 1, "text": "x", "ok": True, "why": "grounded"}]
     signup = {"id": "signup", "name": "회원 가입·개인정보 수집", "evidence": [], "model_citations": []}
     guess = rv.said({"applies": "예", "condition": "채팅에 건강 정보를 쓸 수 있다", "trigger": "자유 입력 추측"})
-    status, gate = rv.accept(_duty("pipa-23-1"), guess, "seen-in-code", ok, False, None)
+    status, gate = rv.accept(_duty("pipa-23-1"), guess, "seen-in-code", ok, True, None)
     assert status == "likely-not-applicable" and gate["why"] == "free-input" and gate["from"] == "seen-in-code"
+    status, gate = rv.accept(_duty("pipa-23-1"), guess, "seen-in-code", ok, False, None)
+    assert status == "check-applicability" and gate["why"] == "free-input" and "검색 증명이 없어" in gate["note"]
     # '코드에서 본 것' 후보를 내릴 때만 쓴다. 해당 여부(사업자인지 모름 등)·저장소 밖은 그대로다(11/13 3배치 실측)
     unsure = rv.said({"applies": "모름", "condition": "지능정보사업자인지 모른다", "trigger": "자유 입력 추측"})
     assert rv.accept(_duty("pipa-23-1"), guess, "check-applicability", ok, False, None) == ("check-applicability", None)
@@ -812,7 +823,7 @@ def test_a_relabelled_guess_cannot_raise_an_item_the_guess_gate_moved(tmp_path):
     d = _duty("pipa-23-1")
     guessed = rv.said({"applies": "예", "condition": "채팅에 쓸 수 있다", "trigger": "자유 입력 추측"})
     ok = [{"file": "a.ts", "line": 1, "text": "x", "ok": True, "why": "grounded"}]
-    status, gate = rv.accept(d, guessed, "seen-in-code", ok, False, None)
+    status, gate = rv.accept(d, guessed, "seen-in-code", ok, True, None)
     f = {"status": status, "gate": gate}
     assert status == "likely-not-applicable" and gate["why"] == "free-input"
     relabel = _flip("확인할 것(해당 여부)", [STORE], applies="모름", trigger="입력란·처리·저장")
@@ -827,9 +838,9 @@ def test_a_relabelled_guess_cannot_raise_an_item_the_guess_gate_moved(tmp_path):
     plain = {"status": "likely-not-applicable", "gate": None}
     assert rv.judge_rebut(root, d, relabel, plain, None, None, False)["status"] == "check-applicability"
 
-    # 반박 질문에 그 조건을 적는다
+    # 반박 질문에 그 조건을 적는다(입력란이 없다는 검색이 맞아 '걸리지 않는 것으로 보임'으로 옮긴 항목)
     def guessing(_duty_id):
-        return ("확인할 것(코드에서 본 것)", [STORE], [], {"applies": "예", "trigger": "자유 입력 추측"})
+        return ("확인할 것(코드에서 본 것)", [STORE], [ABSENT], {"applies": "예", "trigger": "자유 입력 추측"})
 
     _, log = _run(root, "duty", use_static=False, investigator=fake_investigator(guessing))
     assert any("자유 입력 추측뿐이었다" in p for p in log)
@@ -915,3 +926,194 @@ def test_the_rebuttal_can_be_turned_off_and_the_report_says_so(tmp_path):
 
     assert build_parser().parse_args(["review", ".", "--no-rebut"]).no_rebut
     assert not build_parser().parse_args(["review", "."]).no_rebut
+
+
+def test_the_understanding_decides_features_in_any_language(tmp_path):
+    """기능은 이해 단계가 기능 목록의 기능마다 인용과 함께 정한다. JS·TS 신호는 단서일 뿐이라, package.json 이 없는
+    저장소(Java·Python·Go 등)도 기능이 잡히고 체크리스트가 나온다(11/15 지시). 플랫폼은 package.json 으로 가르지 못했을
+    때만 이해 단계가 인용과 함께 적은 것을 쓴다. 인용이 관문을 넘지 못한 기능·플랫폼은 받지 않는다."""
+    files = {
+        "build.gradle": "dependencies { implementation 'org.springframework.boot:spring-boot-starter-web' }\n",
+        "src/main/java/shop/MemberController.java": (
+            "@RestController\n"
+            "public class MemberController {\n"
+            '    @PostMapping("/members")\n'
+            "    public Long join(@RequestBody MemberForm form) { return memberService.join(form); }\n"
+            "}\n"
+        ),
+        "src/main/java/shop/OrderService.java": (
+            "public class OrderService {\n    public Order order(Long memberId, Long itemId, int count) {\n"
+            "        return orderRepository.save(Order.create(member, item, count));\n    }\n}\n"
+        ),
+        "src/test/java/shop/MemberTest.java": "class MemberTest { void join() { memberService.join(form); } }\n",
+    }
+    for name, text in files.items():
+        (tmp_path / name).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / name).write_text(text, encoding="utf-8")
+    join = {
+        "file": "src/main/java/shop/MemberController.java",
+        "line": 4,
+        "text": "public Long join(@RequestBody MemberForm form) { return memberService.join(form); }",
+    }
+    order = {
+        "file": "src/main/java/shop/OrderService.java",
+        "line": 3,
+        "text": "return orderRepository.save(Order.create(member, item, count));",
+    }
+    test_line = {"file": "src/test/java/shop/MemberTest.java", "line": 1, "text": "memberService.join(form)"}
+    understood = {
+        "summary": "Spring 쇼핑몰이다.",
+        "features": [
+            {"feature": "signup", "citations": [join], "reason": "회원 가입 API"},
+            {"feature": "commerce", "citations": [order], "reason": "주문"},
+            {"feature": "location", "citations": [test_line], "reason": "시험 파일뿐"},
+        ],
+        "platforms": [{"platform": "server", "citations": [join]}, {"platform": "web", "citations": [test_line]}],
+        "flow": {"nodes": [], "edges": []},
+    }  # fmt: skip
+
+    def inv(body):
+        if _text(body).startswith("이 저장소가 어떤 서비스인지"):
+            assert "언어와 상관없이" in _text(body) and '"features"' in _text(body)
+            return _reply(understood)
+        return fake_investigator(lambda d: ANSWERS[3])(body)
+
+    assert rv.profile(tmp_path)["service_features"] == 0  # 규칙 신호(JS·TS)로는 아무것도 못 찾는다
+    doc, _ = _run(tmp_path, "bundle", use_static=False, investigator=inv)
+    _valid(doc)
+    feats = {f["id"]: f for f in doc["profile"]["features"]}
+    assert set(feats) == {"signup", "commerce"} and all(f["sources"] == ["model"] for f in feats.values())
+    assert feats["signup"]["model_citations"][0]["file"].endswith("MemberController.java")
+    assert doc["profile"]["platforms"] == ["server"] and doc["profile"]["platforms_from"] == "model"
+    assert doc["run"]["lacks"] == "screen" and doc["run"]["understanding"]["rejected_claims"] == 2
+    asked = {i["duty"] for i in doc["checklist"] if i["asked"]}
+    assert {"tcra-3-2", "pipa-29-1", "ecom-10-1"} <= asked  # 가입·공통·상거래 의무를 묻는다
+    # 같은 결과를 되살려도 기능·플랫폼이 같다
+    again, _ = _run(tmp_path, "duty", use_static=False, reuse=doc, investigator=inv)
+    _valid(again)
+    assert again["profile"]["platforms"] == ["server"] and again["profile"]["platforms_from"] == "model"
+    assert {f["id"] for f in again["profile"]["features"]} == set(feats)
+    # package.json 으로 가른 플랫폼이 있으면 그것을 쓴다
+    prof = {"platforms": ["web"]}
+    assert rv.platforms_of(prof, {"platforms": [{"platform": "server", "citations": []}]}) == (["web"], "signal")
+    assert rv.platforms_of({"platforms": []}, {"platforms": []}) == ([], "none")
+
+
+def test_bundles_are_a_table_of_duties_that_look_at_the_same_code():
+    """묶음은 표(features.yaml 의 bundles: 기능·법·조문)로 정한다. 한 묶음은 같은 기능의 의무 4개까지이고, 의무는 한
+    묶음에만 든다. 묶음은 첫 의무의 자리에서 묻고, 표에 없는 의무는 하나씩 묻는다."""
+    rows = {d["id"]: d for d in rv.load_duties()}
+    table = rv.load_features()["bundles"]
+    seen: set[str] = set()
+    for b in table:
+        assert 2 <= len(b["duties"]) <= rv.BUNDLE_MAX and b["law"] and b["scope"]
+        assert {rows[d]["feature"] for d in b["duties"]} == {b["feature"]}
+        assert all(rows[d]["review_candidate"] or rows[d]["krcore"] for d in b["duties"])
+        assert not seen & set(b["duties"])
+        seen |= set(b["duties"])
+    consent = next(b for b in table if b["id"] == "signup-consent")["duties"]
+    review = [rows["tcra-3-2"], rows[consent[1]], rows["pipa-29-1"], rows[consent[0]], rows["netact-50-1"]]
+    groups = rv.groups_of(review, "bundle")
+    assert [[d["id"] for d in g] for g in groups] == [
+        ["tcra-3-2"],
+        [consent[1], consent[0]],
+        ["pipa-29-1"],
+        ["netact-50-1"],
+    ]
+    from policypack.cli import build_parser
+
+    assert build_parser().parse_args(["review", ".", "--batch", "bundle"]).batch == "bundle"
+
+
+def test_self_labels_count_only_with_a_grounded_citation():
+    """모델이 스스로 다는 표시('금지 행위'·'빈틈')는 관문을 통과한 인용이 있을 때만 받는다. 금지 의무에서 답이 약점을
+    인용했으면 표시가 '빈틈'이어도 '코드에서 본 것'에 둔다(11/13 7배치: 'BEST' 정렬의 판매량을 브라우저가 보낸 값으로
+    바꾸는 줄을 '빈틈'으로 달아 '해당 없음'으로 내려갔다)."""
+    ok = [{"file": "a.ts", "line": 1, "text": "x", "ok": True, "why": "grounded"}]
+    bad = [{"file": "a.ts", "line": 1, "text": "x", "ok": False, "why": "not-found"}]
+    lure = _duty("ecom-21-1-h1-lure")
+    gap = rv.said({"applies": "예", "condition": "판매량으로 BEST 를 정렬한다", "shows": "빈틈"})
+    act = rv.said({"applies": "예", "condition": "가짜 후기를 보인다", "shows": "금지 행위"})
+    assert rv.marked(gap, ok) == "빈틈" and rv.marked(gap, bad) is None and rv.marked(act, []) is None
+    assert rv.accept(lure, gap, "seen-in-code", ok, True, None) == ("seen-in-code", None)
+    assert rv.accept(lure, act, "seen-in-code", ok, True, None) == ("seen-in-code", None)
+    status, gate = rv.accept(lure, act, "seen-in-code", bad, True, None)  # 표시뿐이고 인용이 관문을 넘지 못했다
+    assert status == "not-applicable" and gate["why"] == "prohibition"
+    # 반대쪽 의무의 예외도 관문 통과 인용이 있어야 한다
+    guard = _duty("safety-std-5-1")
+    assert rv.accept(guard, gap, "seen-in-code", ok, False, None, "server") == ("seen-in-code", None)
+    assert rv.other_side(guard, "seen-in-code", None, "server", gap, bad)[0] == "check-outside"
+    # 반박도 같다: 빈틈을 인용하면 금지 의무의 빼는 답을 깬다
+    root = Path(__file__).resolve().parents[1]
+    line = {"file": "src/policypack/review/prompts.py", "line": 1, "text": '"""review 의 질문 세 가지'}
+    f = {"status": "likely-not-applicable", "gate": None}
+    flip = _flip("확인할 것(코드에서 본 것)", [line], applies="예", shows="빈틈")
+    assert rv.judge_rebut(root, lure, flip, f, None, None, False)["result"] == "overturned"
+    fake = _flip("확인할 것(코드에서 본 것)", [{**line, "text": "없는 줄"}], applies="예", shows="빈틈")
+    assert rv.judge_rebut(root, lure, fake, f, None, None, False)["gate"]["why"] == "prohibition"
+
+
+def test_evidence_found_with_a_remaining_gap_is_seen_in_code(tmp_path):
+    """'충족'이라 하면서 남은 부족한 점을 적은 답은 '충족 근거 있음'이 아니라 '코드에서 본 것'이다(11/13 4배치: 접근권한
+    최소화를 '충족'으로 답하면서 "회원 탈퇴 API 는 본인 여부를 확인하지 않는다"고 적었다). 답 형식에 남은 부족한 점
+    (remaining)을 반드시 채우게 하고(없으면 '없음'), 글을 낱말로 추측해 가르지는 않는다."""
+    ok = [{"file": "a.ts", "line": 1, "text": "x", "ok": True, "why": "grounded"}]
+    d = _duty("safety-std-5-1")
+    gap = rv.said({"applies": "예", "shows": "행위", "remaining": "회원 탈퇴 API 는 본인 여부를 확인하지 않는다"})
+    status, gate = rv.accept(d, gap, "evidence-found", ok, False, None)
+    assert status == "seen-in-code" and gate["why"] == "remaining-gap" and "본인 여부" in gate["note"]
+    for none in ("없음", "없음.", " ", "", None):
+        assert rv.accept(d, rv.said({"shows": "행위", "remaining": none}), "evidence-found", ok, False, None) == (
+            "evidence-found",
+            None,
+        )
+    assert all("remaining" in t for t in (P.INVESTIGATE, P.REBUT)) and "없음" in P.ACT
+    # 반박의 '충족'도 같다
+    root = _repo(tmp_path)
+    up = _flip("충족 근거 있음", [STORE], applies="예", shows="행위", remaining="동의 철회 경로가 없다")
+    out = rv.judge_rebut(root, d, up, {"status": "seen-in-code", "gate": None}, None, None, False)
+    assert out["result"] == "overturn-ungrounded" and out["gate"]["why"] == "remaining-gap"
+
+    # 전체 경로: 체크리스트의 없는 것(missing)에 남은 부족한 점이 실린다
+    def met(_duty_id):
+        return ("충족 근거 있음", [STORE], [], {"applies": "예", "shows": "행위", "remaining": "철회 기능이 없음"})
+
+    doc = rv.review(
+        root,
+        AgentJudge("claude-haiku-5-5", fake_investigator(met)),
+        AgentJudge("claude-sonnet-5-5", fake_checker([])),
+        rv.Limits(usd=5.0, seconds=300, concurrency=2, batch="duty", rebut=False),
+        use_static=False,
+    )
+    _valid(doc)
+    moved = [i for i in doc["checklist"] if ((i["first"] or {}).get("gate") or {}).get("why") == "remaining-gap"]
+    assert moved and all(i["missing"] == "철회 기능이 없음" and i["first"]["remaining"] for i in moved)
+    assert all(i["status"] != "evidence-found" for i in doc["checklist"])
+
+
+def test_the_rebuttal_can_be_limited_to_what_was_found(tmp_path):
+    """반박을 '코드에서 본 것'과 '충족 근거 있음'에만 걸 수 있다(기본은 그대로 모두). 나머지(저장소 밖, 해당 없음,
+    걸리지 않는 것으로 보임)는 묻지 않고 verification 은 not-run(why rebut-scope)이다."""
+    assert rv.Limits().rebut_scope == "all"
+    log: list = []
+    doc = rv.review(
+        _repo(tmp_path),
+        AgentJudge("claude-haiku-5-5", fake_investigator()),
+        AgentJudge("claude-sonnet-5-5", fake_checker(log)),
+        rv.Limits(usd=5.0, seconds=300, concurrency=2, batch="duty", rebut_scope="found"),
+        use_static=False,
+    )
+    _valid(doc)
+    assert doc["run"]["rebut_scope"] == "found" and log
+    asked = {d for q in doc["run"]["questions"] if q["stage"] == "rebut" for d in q["duties"]}
+    for i in doc["checklist"]:
+        if not i["first"] or i["first"]["status"] == "check-applicability":
+            continue
+        if i["first"]["status"] in rv.FOUND:
+            assert i["duty"] in asked
+        else:
+            assert i["duty"] not in asked and i["verification"] == {"result": "not-run", "why": "rebut-scope"}
+    assert any(i["verification"].get("why") == "rebut-scope" for i in doc["checklist"])
+    from policypack.cli import build_parser
+
+    assert build_parser().parse_args(["review", ".", "--rebut-scope", "found"]).rebut_scope == "found"

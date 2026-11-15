@@ -152,10 +152,19 @@ def build_parser() -> argparse.ArgumentParser:
         "--no-rebut", action="store_true", help="반박 검증을 묻지 않는다(결과의 run.rebut 이 false, 비용이 약 절반)"
     )
     rv.add_argument(
+        "--rebut-scope",
+        default="all",
+        choices=["all", "found"],
+        help="반박할 항목. all(기본): 코드에서 본 것·저장소 밖·충족·해당 없음·걸리지 않는 듯, "
+        "found: 코드에서 본 것·충족 근거 있음만(나머지는 verification not-run, why rebut-scope)",
+    )
+    rv.add_argument(
         "--batch",
         default="duty",
-        choices=["duty", "feature"],
-        help="질문 하나에 의무 하나(기본) 또는 기능 하나(의무 8개까지). 11/11 실측: duty 가 인용이 많고 비용은 1.8배",
+        choices=["duty", "feature", "bundle"],
+        help="질문 하나에 의무 하나(기본), 기능 하나(의무 8개까지), 또는 표의 묶음(같은 기능·같은 코드 범위를 보는 "
+        "의무 "
+        "4개까지, 답과 관문은 의무마다). 11/11 실측: duty 가 feature 보다 인용이 많고 비용은 1.8배",
     )
     rv.add_argument("--max-usd", type=float, default=5.0, help="저장소 한 번의 어림 금액 상한(공식 단가, 기본 5)")
     rv.add_argument("--time-limit", type=float, default=360.0, help="저장소 한 번의 시간 상한(초, 기본 360)")
@@ -865,7 +874,7 @@ def cmd_review(args) -> int:
         raise ConfigError(str(e)) from e
     from policypack.judge.http import endpoint
 
-    check = "끔" if args.no_rebut else args.checker
+    check = "끔" if args.no_rebut else args.checker + ("" if args.rebut_scope == "all" else f"({args.rebut_scope})")
     print(
         f"검토({args.model}, 반박 {check}, 묶음 {args.batch}): 모델이 읽은 파일의 코드가 "
         f"{_redact(endpoint())} 로 나갑니다(비밀값은 가리고 .env 등은 읽지 않음). "
@@ -881,7 +890,14 @@ def cmd_review(args) -> int:
         before, now = (reuse.get("profile") or {}).get("commit"), rv.commit_of(root.resolve())
         if before and now and before != now:
             print(f"알림: --reuse 의 커밋({before[:12]})과 지금 커밋({now[:12]})이 다릅니다", file=sys.stderr)
-    limits = rv.Limits(args.max_usd, args.time_limit, args.concurrency, args.batch, rebut=not args.no_rebut)
+    limits = rv.Limits(
+        args.max_usd,
+        args.time_limit,
+        args.concurrency,
+        args.batch,
+        rebut=not args.no_rebut,
+        rebut_scope=args.rebut_scope,
+    )
     doc = rv.review(
         root, investigator, checker, limits, use_static=not args.no_static, throttles=throttles, reuse=reuse
     )

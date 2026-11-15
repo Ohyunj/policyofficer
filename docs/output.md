@@ -99,30 +99,33 @@ Quality(`--output-format gitlab`)는 그 형식의 규격을 따르고, 지문�
 스키마는 [`schemas/review-2.json`](../schemas/review-2.json), `review_version` 은 2 다(1 에서 '확인할 것'을 세 갈래로 나누고
 부재 증명을 더해 판을 올렸다. 키를 더할 때는 그대로).
 조사 모델(`--model`, 기본 haiku)이 저장소를 읽고, 다른 모델(`--checker`, 기본 sonnet)이 반박한다. 질문은 기본으로
-의무 하나씩이다(`--batch duty`; `feature` 는 기능 하나에 의무 8개까지 묶어 싸다). 모델이 읽은 파일의 코드가 밖으로
+의무 하나씩이다(`--batch duty`; `feature` 는 기능 하나에 의무 8개까지, `bundle` 은 표(`features.yaml` 의 `bundles`:
+같은 기능·같은 코드 범위를 보는 의무 4개까지)의 묶음마다 묻는다. 답과 관문은 묶어도 의무마다다). `--rebut-scope found` 는
+반박을 '코드에서 본 것'·'충족 근거 있음'에만 건다(기본 all). 기능은 이해 단계가 기능 목록의 기능마다 인용과 함께 정한다
+(언어와 상관없이. JS·TS 신호는 단서다). 모델이 읽은 파일의 코드가 밖으로
 나간다(비밀값은 가리고 .env 등은 읽지 않는다). `--plan` 은 모델 없이 물을 의무와 질문 수만 낸다. `--reuse <앞 결과>` 는
 같은 저장소·커밋의 앞 결과에서 이해 단계(요약·기능·개인정보 흐름)를 되살려 묻지 않는다(인용은 관문에 다시 건다).
 
 | 키 | 뜻 |
 |---|---|
 | `summary` | 체크리스트의 갈래별 수(`counts`), 갈래 이름(`labels`), 맨 위 다섯 건의 의무 id(`top`), 한 줄로 묶어 보일 항목(`groups`: 품목 신호가 없어 묻지 않은 품목 의무, `id` goods) |
-| `profile` | 커밋(`commit`), 플랫폼(`platforms`: web·mobile·server), 서비스 요약, 기능(`sources`: signal·model·static, 모델이 더한 근거 `model_citations`, 인용과 함께 뺀 것은 `removed`), 품목 신호(`goods`) |
+| `profile` | 커밋(`commit`), 플랫폼(`platforms`: web·mobile·server, 출처 `platforms_from`: signal 은 package.json, model 은 package.json 으로 가르지 못해 이해 단계가 인용과 함께 적은 것 `platform_evidence`), 서비스 요약, 기능(`sources`: signal·model·static, 모델이 더한 근거 `model_citations`, 인용과 함께 뺀 것은 `removed`), 품목 신호(`goods`) |
 | `data_flow` | 개인정보 흐름. `nodes[]`(input·server·store·external, 다루는 항목 `data`, 인용) 와 `edges[]`(from→to). 인용이 관문을 통과한 것만 |
 | `obligations.listed[]` | 목록 층: 감지된 기능과 거의 모든 서비스에 걸릴 수 있는 의무. `in_checklist` 는 검토 층에 들었는지 |
 | `checklist[]` | 검토 층. 이미 갈래 순으로 늘어서 있고 `rank` 가 1 부터다. 의무마다 `status`·`status_label`, 인용 `citations`, 부재를 보인 검색 `searches`, 개발자에게 물을 `question`, 조사 모델의 첫 답 `first`, 반박 `verification`(upheld · overturned · overturn-ungrounded · not-run, 조문 밖 요건이었는지 `off_quote`), 내장 팩 정적 결과 `static`, 조건은 있는데 없는 지킨 처리 `missing`(예: "약관 고지 화면이 없음"), 묻지 않은 품목 의무의 묶음 `group`(goods) |
-| `first`·`verification` 의 덧붙임(11/12) | 답이 적은 걸리는 조건 `applies`(예·아니오·모름)·`condition`, 없는 것 `missing`, 충족 인용의 성격 `shows`(행위·이름·기본값), 관문이 답을 바꾼 까닭 `gate`(`why`: condition-present · no-condition · name-or-default · audience · missing-check · applies-unknown · free-input · other-side · prohibition · same-model, `note` 는 `reason` 앞에도 붙는다). '해당 없음'의 근거 `basis`(처리 없음·확인 장치 없음, 같은 날 덧붙임). 걸리는 조건을 본 곳 `trigger`(입력란·처리·저장 · 자유 입력 추측, 11/13 덧붙임). `shows` 의 `금지 행위` 는 금지 의무(의무 표의 `prohibition`)에서 금지된 행위 자체를, `빈틈` 은 '코드에서 본 것'의 인용이 빈틈 자체(상수로 고정된 로그인 검사, 평문 저장 등)를 보인다는 표시다. 반박의 뒤집기는 자유 입력 관문이 옮긴 항목이면 그 정보를 받는 입력란·필드·저장의 인용(applies 예)이, 금지 의무면 금지 행위의 인용이 있어야 받고, 조사와 반박이 같은 모델이면 '충족'으로 올리는 뒤집기는 받지 않는다(`gate` same-model). 인용의 `why` 가 `profile` 이면 모델의 인용이 아니라 기능이 있다는 프로필 신호(걸리는 조건의 근거)다. `config-value` 면 설정 파일의 줄이지만 주소·호스트 값이 있어 받은 인용이다 |
-| `run` | 모델, 반박을 물었는지(`rebut`, false 면 `models.verify` 는 none 이고 반박할 항목은 not-run why rebut-off), 묶음, 저장소에 없는 쪽(`lacks`: screen 이면 서버만, server 면 화면만), 상한, 시간, 호출 수, 사용량, 어림 금액(공식 단가를 호출마다 매겨 더한 값), 상태·반박 결과별 수, 인용과 관문이 거절한 수, 검색과 다시 돌려 맞지 않은 수, 못 물은 의무(`not_asked`), 가린 비밀값, 읽지 않은 비밀 파일, 질문마다의 기록 |
+| `first`·`verification` 의 덧붙임(11/12) | 답이 적은 걸리는 조건 `applies`(예·아니오·모름)·`condition`, 없는 것 `missing`, 충족 인용의 성격 `shows`(행위·이름·기본값), 관문이 답을 바꾼 까닭 `gate`(`why`: condition-present · no-condition · name-or-default · audience · missing-check · applies-unknown · free-input · other-side · prohibition · same-model, `note` 는 `reason` 앞에도 붙는다). '해당 없음'의 근거 `basis`(처리 없음·확인 장치 없음, 같은 날 덧붙임). 걸리는 조건을 본 곳 `trigger`(입력란·처리·저장 · 자유 입력 추측, 11/13 덧붙임). `shows` 의 `금지 행위` 는 금지 의무(의무 표의 `prohibition`)에서 금지된 행위 자체를, `빈틈` 은 '코드에서 본 것'의 인용이 빈틈 자체(상수로 고정된 로그인 검사, 평문 저장 등)를 보인다는 표시다. 반박의 뒤집기는 자유 입력 관문이 옮긴 항목이면 그 정보를 받는 입력란·필드·저장의 인용(applies 예)이, 금지 의무면 금지 행위의 인용이 있어야 받고, 조사와 반박이 같은 모델이면 '충족'으로 올리는 뒤집기는 받지 않는다(`gate` same-model). '충족'이라 답할 때 적는 남은 부족한 점 `remaining`(없으면 '없음', 11/15 덧붙임)이 있으면 '코드에서 본 것'이다(`gate` remaining-gap). '금지 행위'·'빈틈' 표시는 관문을 통과한 인용이 있을 때만 받는다. 인용의 `why` 가 `profile` 이면 모델의 인용이 아니라 기능이 있다는 프로필 신호(걸리는 조건의 근거)다. `config-value` 면 설정 파일의 줄이지만 주소·호스트 값이 있어 받은 인용이다 |
+| `run` | 모델, 반박을 물었는지(`rebut`, false 면 `models.verify` 는 none 이고 반박할 항목은 not-run why rebut-off), 반박할 항목(`rebut_scope`: all · found, found 면 나머지는 not-run why rebut-scope), 묶음(`batch`: duty · feature · bundle), 저장소에 없는 쪽(`lacks`: screen 이면 서버만, server 면 화면만), 상한, 시간, 호출 수, 사용량, 어림 금액(공식 단가를 호출마다 매겨 더한 값), 상태·반박 결과별 수, 인용과 관문이 거절한 수, 검색과 다시 돌려 맞지 않은 수, 못 물은 의무(`not_asked`), 가린 비밀값, 읽지 않은 비밀 파일, 질문마다의 기록 |
 
 상태(갈래 순):
 
 | status | 이름 | 받는 조건 |
 |---|---|---|
-| `seen-in-code` | 확인할 것 — 코드에서 본 것 | 걸리는 조건의 인용이 관문을 통과했다. 지킨 근거는 찾지 못했다(`missing`). 조건은 있는데 지킨 처리가 없다는 '해당 없음', 그 기능이 있으면 걸리는 의무(`features.yaml` 의 `whenever`)에 기능이 있는데 낸 '해당 없음', 이름·기본값뿐인 '충족', 그 기능이 있으면 걸리는 의무에 낸 '해당 여부' 가운데 조사 답이 그 기능의 처리가 저장소에 있다고 보고(`applies` 예) 인용한 것도 여기로 온다 |
+| `seen-in-code` | 확인할 것 — 코드에서 본 것 | 걸리는 조건의 인용이 관문을 통과했다. 지킨 근거는 찾지 못했다(`missing`). 조건은 있는데 지킨 처리가 없다는 '해당 없음', 그 기능이 있으면 걸리는 의무(`features.yaml` 의 `whenever`)에 기능이 있는데 낸 '해당 없음', 이름·기본값뿐인 '충족', 남은 부족한 점을 적은 '충족'(`gate` remaining-gap), 금지 의무에서 금지된 행위가 일어나게 하는 빈틈을 인용한 답(`shows` 빈틈, 관문 통과), 그 기능이 있으면 걸리는 의무에 낸 '해당 여부' 가운데 조사 답이 그 기능의 처리가 저장소에 있다고 보고(`applies` 예) 인용한 것도 여기로 온다 |
 | `check-outside` | 확인할 것 — 저장소 밖에서 | 배포 설정·처리방침·저장소에 없는 서버를 봐야 한다. 인용이 관문을 통과하지 못한 '코드에서 본 것'·'충족'도 여기로 온다. 저장소가 서버만 또는 화면만이면(`run.lacks`) 반대쪽이 하는 의무(`features.yaml` 의 `sides`)의 '코드에서 본 것'도 여기다(`gate` other-side). 답이 이 저장소의 줄을 인용해 빈틈 자체를 보였으면(`shows` 빈틈·금지 행위) 옮기지 않는다 |
 | `check-applicability` | 확인할 것 — 해당 여부부터 | 걸리는지가 사업자의 판단이다(고영향 AI, 사내 도구, 업종). 반박하지 않는다. 걸리는 조건이 없다는 말 없이 낸 '해당 없음', 걸리는지 모른다고 한(`applies` 모름) '확인할 것'(그 기능이 있으면 걸리는 의무는 빼고), 나이·본인·지역을 확인하는 장치가 없다는 것을 근거로 든 '해당 없음'(`basis` 확인 장치 없음)과 이용자가 누구인지에 걸리는 의무(`features.yaml` 의 `audience`: 아동·미성년자·청소년)의 '해당 없음', 품목 신호가 없어 묻지 않은 품목 의무(`not_answered` goods-not-detected, 갈래의 맨 뒤), 생성형 AI 기능 없이 분류·인식 모델만 있어 묻지 않은 AI 사전 고지·결과물 표시(`not_answered` not-generative)도 여기다. 생성형 AI 기능이 있으면 묻고 조사 답을 따른다. 그 기능이 있으면 걸리는 의무로 고정하는 것은 프로필의 생성형 신호(SDK 꾸러미·import·호출·주소)가 있을 때만이다 |
 | `unknown` | 모름(묻지 못함) | 상한·실패로 답이 없다. `not_answered` 에 까닭 |
 | `evidence-found` | 충족 근거 있음 | 조문이 요구하는 행위 자체를 보이는 줄(`shows` 행위)의 인용이 관문을 통과했다 |
-| `likely-not-applicable` | 걸리지 않는 것으로 보임(확인 안 됨) | 걸리는 조건 자체가 없다고 했지만(`applies` 아니오·`condition`·`basis` 처리 없음) 검색 증명이 없거나 맞지 않았다. 걸리는 조건이 이용자가 자유 입력·사진에 넣을 수 있다는 추측뿐인 '코드에서 본 것'(`trigger` 자유 입력 추측, `applies` 모름이 아닐 때)도 여기다. 그 추측으로 반박이 뒤집으려 하면 받지 않는다. 금지 의무인데 금지된 행위 자체를 인용하지 않은 '코드에서 본 것'(막는 장치가 없다는 답)도 여기다(검색이 맞으면 '해당 없음', `gate` prohibition). 확인 목록에 올리지 않는다 |
+| `likely-not-applicable` | 걸리지 않는 것으로 보임(확인 안 됨) | 걸리는 조건 자체가 없다고 했지만(`applies` 아니오·`condition`·`basis` 처리 없음) 검색 증명이 없거나 맞지 않았다. 걸리는 조건이 이용자가 자유 입력·사진에 넣을 수 있다는 추측뿐인 '코드에서 본 것'(`trigger` 자유 입력 추측, `applies` 모름이 아닐 때)도, 그 정보를 받는 입력란·필드·저장이 없다는 검색이 맞으면 여기다(맞지 않으면 '해당 여부부터'). 그 추측으로 반박이 뒤집으려 하면 받지 않는다. 금지 의무인데 금지된 행위 자체나 그 빈틈을 인용하지 않은 '코드에서 본 것'(막는 장치가 없다는 답)도 여기다(검색이 맞으면 '해당 없음', `gate` prohibition). 확인 목록에 올리지 않는다 |
 | `not-applicable` | 해당 없음(검색으로 확인) | 걸리는 조건 자체가 없다고 했고(`applies` 아니오·`condition`·`basis` 처리 없음), 그 조건을 찾은 검색(정규식·줄 수)을 도구가 저장소에서 다시 돌려 줄 수가 같았다 |
 
 - 인용은 시험·설정 파일의 줄이면 받지 않는다. 질문에 넣는 요건은 조문 인용에 있는 것만이다.

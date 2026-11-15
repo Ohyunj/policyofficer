@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://policypack.dev/schemas/review-2.json",
   "title": "policypack review 보고서",
-  "description": "policypack review <저장소> 의 JSON. 키를 더할 때는 review_version 을 올리지 않는다. 받는 쪽은 모르는 키를 무시한다. 2: 확인할 것을 세 갈래로 나누고 부재 증명(searches)·summary·platforms 를 더했다. 2판 덧붙임(11/12): 답의 applies·condition·missing·shows·gate, 품목 묶음(group·summary.groups·profile.goods), not_answered goods-not-detected, 인용 why profile. 2판 덧붙임(11/12 둘째): 답의 basis(해당 없음의 근거), gate 의 why audience·missing-check·applies-unknown 과 from seen-in-code·check-outside. 2판 덧붙임(11/13): 답의 trigger(걸리는 조건을 본 곳), gate 의 why free-input·other-side 와 from check-applicability, 인용 why config-value, not_answered not-generative, run.lacks. 2판 덧붙임(11/13 둘째): shows 금지 행위, gate 의 why prohibition·same-model. 2판 덧붙임(11/13 셋째): run.rebut, verification why rebut-off. 2판 덧붙임(11/13 넷째): shows 빈틈(코드에서 본 것의 인용이 빈틈 자체).",
+  "description": "policypack review <저장소> 의 JSON. 키를 더할 때는 review_version 을 올리지 않는다. 받는 쪽은 모르는 키를 무시한다. 2: 확인할 것을 세 갈래로 나누고 부재 증명(searches)·summary·platforms 를 더했다. 2판 덧붙임(11/12): 답의 applies·condition·missing·shows·gate, 품목 묶음(group·summary.groups·profile.goods), not_answered goods-not-detected, 인용 why profile. 2판 덧붙임(11/12 둘째): 답의 basis(해당 없음의 근거), gate 의 why audience·missing-check·applies-unknown 과 from seen-in-code·check-outside. 2판 덧붙임(11/13): 답의 trigger(걸리는 조건을 본 곳), gate 의 why free-input·other-side 와 from check-applicability, 인용 why config-value, not_answered not-generative, run.lacks. 2판 덧붙임(11/13 둘째): shows 금지 행위, gate 의 why prohibition·same-model. 2판 덧붙임(11/13 셋째): run.rebut, verification why rebut-off. 2판 덧붙임(11/13 넷째): shows 빈틈(코드에서 본 것의 인용이 빈틈 자체). 2판 덧붙임(11/15): 답의 remaining(남은 부족한 점)과 gate 의 why remaining-gap, profile.platforms_from·platform_evidence(이해 단계가 정한 플랫폼), run.batch bundle, run.rebut_scope 와 verification why rebut-scope.",
   "type": "object",
   "properties": {
     "review_version": {
@@ -209,6 +209,41 @@
             "test_or_config"
           ],
           "additionalProperties": false
+        },
+        "platforms_from": {
+          "enum": [
+            "signal",
+            "model",
+            "none"
+          ],
+          "description": "platforms 의 출처. signal: package.json 으로 가름, model: 가르지 못해 이해 단계가 인용과 함께 적은 것(platform_evidence), none: 둘 다 없음"
+        },
+        "platform_evidence": {
+          "type": "array",
+          "description": "이해 단계가 인용과 함께 적은 플랫폼(관문 통과한 것만)",
+          "items": {
+            "type": "object",
+            "properties": {
+              "platform": {
+                "enum": [
+                  "web",
+                  "mobile",
+                  "server"
+                ]
+              },
+              "citations": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/citation"
+                }
+              }
+            },
+            "required": [
+              "platform",
+              "citations"
+            ],
+            "additionalProperties": false
+          }
         }
       },
       "required": [
@@ -393,7 +428,8 @@
         "batch": {
           "enum": [
             "feature",
-            "duty"
+            "duty",
+            "bundle"
           ]
         },
         "rebut": {
@@ -575,6 +611,13 @@
           "items": {
             "$ref": "#/$defs/question"
           }
+        },
+        "rebut_scope": {
+          "enum": [
+            "all",
+            "found"
+          ],
+          "description": "반박할 항목. all: 코드에서 본 것·저장소 밖·충족·해당 없음·걸리지 않는 듯, found: 코드에서 본 것·충족 근거 있음만(나머지 verification 은 not-run, why rebut-scope)"
         }
       },
       "required": [
@@ -889,7 +932,8 @@
           ]
         },
         "why": {
-          "type": "string"
+          "type": "string",
+          "description": "not-run 의 까닭. business-judgment, no-answer, rebut-off(반박을 끔), rebut-scope(반박을 코드에서 본 것·충족 근거 있음에만 걸어 묻지 않음), goods-not-detected, not-generative, cost-cap, time-cap 등"
         },
         "status": {
           "enum": [
@@ -982,7 +1026,8 @@
                     "free-input",
                     "other-side",
                     "prohibition",
-                    "same-model"
+                    "same-model",
+                    "remaining-gap"
                   ]
                 },
                 "note": {
@@ -995,12 +1040,16 @@
                 "why"
               ],
               "additionalProperties": false,
-              "description": "관문이 모델의 답을 바꾼 까닭. condition-present: 걸리는 조건(기능)이 있어 해당 없음을 받지 않음, no-condition: 걸리는 조건이 없다는 답(applies 아니오·condition·basis 처리 없음)이 없음, name-or-default: 충족 인용이 이름·기본값뿐, audience: 이용자가 누구인지(아동·미성년자·청소년)에 걸리는 의무라 해당 없음을 받지 않음, missing-check: 답이 나이·본인·지역 확인 장치가 없다는 것을 근거로 듦, applies-unknown: 걸리는지 모른다고 답한 확인할 것을 해당 여부부터로 옮김, free-input: 걸리는 조건이 이용자가 자유 입력·사진에 넣을 수 있다는 추측뿐(확인할 것은 걸리지 않는 것으로 보임, 반박의 뒤집기는 받지 않음), other-side: 저장소가 서버만·화면만이라 반대쪽 의무의 코드에서 본 것을 저장소 밖으로 옮김, prohibition: 금지 의무인데 금지된 행위 자체의 인용이 없음(코드에서 본 것을 받지 않음), same-model: 조사와 반박이 같은 모델이라 충족으로 올리는 뒤집기를 받지 않음"
+              "description": "관문이 모델의 답을 바꾼 까닭. condition-present: 걸리는 조건(기능)이 있어 해당 없음을 받지 않음, no-condition: 걸리는 조건이 없다는 답(applies 아니오·condition·basis 처리 없음)이 없음, name-or-default: 충족 인용이 이름·기본값뿐, audience: 이용자가 누구인지(아동·미성년자·청소년)에 걸리는 의무라 해당 없음을 받지 않음, missing-check: 답이 나이·본인·지역 확인 장치가 없다는 것을 근거로 듦, applies-unknown: 걸리는지 모른다고 답한 확인할 것을 해당 여부부터로 옮김, free-input: 걸리는 조건이 이용자가 자유 입력·사진에 넣을 수 있다는 추측뿐(확인할 것은 걸리지 않는 것으로 보임, 반박의 뒤집기는 받지 않음), other-side: 저장소가 서버만·화면만이라 반대쪽 의무의 코드에서 본 것을 저장소 밖으로 옮김, prohibition: 금지 의무인데 금지된 행위 자체의 인용이 없음(코드에서 본 것을 받지 않음), same-model: 조사와 반박이 같은 모델이라 충족으로 올리는 뒤집기를 받지 않음, remaining-gap: 충족이라 답하면서 남은 부족한 점을 적음(코드에서 본 것, 반박이면 뒤집기를 받지 않음). free-input 은 그 정보를 받는 입력란·필드·저장이 없다는 검색이 맞을 때만 걸리지 않는 것으로 보임이고, 아니면 해당 여부부터"
             },
             {
               "type": "null"
             }
           ]
+        },
+        "remaining": {
+          "type": "string",
+          "description": "충족 근거 있음이라 답할 때 적는 남은 부족한 점(없으면 '없음'). 적었으면 충족이 아니라 코드에서 본 것(gate remaining-gap)"
         }
       },
       "required": [
@@ -1180,7 +1229,8 @@
                             "free-input",
                             "other-side",
                             "prohibition",
-                            "same-model"
+                            "same-model",
+                            "remaining-gap"
                           ]
                         },
                         "note": {
@@ -1193,12 +1243,16 @@
                         "why"
                       ],
                       "additionalProperties": false,
-                      "description": "관문이 모델의 답을 바꾼 까닭. condition-present: 걸리는 조건(기능)이 있어 해당 없음을 받지 않음, no-condition: 걸리는 조건이 없다는 답(applies 아니오·condition·basis 처리 없음)이 없음, name-or-default: 충족 인용이 이름·기본값뿐, audience: 이용자가 누구인지(아동·미성년자·청소년)에 걸리는 의무라 해당 없음을 받지 않음, missing-check: 답이 나이·본인·지역 확인 장치가 없다는 것을 근거로 듦, applies-unknown: 걸리는지 모른다고 답한 확인할 것을 해당 여부부터로 옮김, free-input: 걸리는 조건이 이용자가 자유 입력·사진에 넣을 수 있다는 추측뿐(확인할 것은 걸리지 않는 것으로 보임, 반박의 뒤집기는 받지 않음), other-side: 저장소가 서버만·화면만이라 반대쪽 의무의 코드에서 본 것을 저장소 밖으로 옮김, prohibition: 금지 의무인데 금지된 행위 자체의 인용이 없음(코드에서 본 것을 받지 않음), same-model: 조사와 반박이 같은 모델이라 충족으로 올리는 뒤집기를 받지 않음"
+                      "description": "관문이 모델의 답을 바꾼 까닭. condition-present: 걸리는 조건(기능)이 있어 해당 없음을 받지 않음, no-condition: 걸리는 조건이 없다는 답(applies 아니오·condition·basis 처리 없음)이 없음, name-or-default: 충족 인용이 이름·기본값뿐, audience: 이용자가 누구인지(아동·미성년자·청소년)에 걸리는 의무라 해당 없음을 받지 않음, missing-check: 답이 나이·본인·지역 확인 장치가 없다는 것을 근거로 듦, applies-unknown: 걸리는지 모른다고 답한 확인할 것을 해당 여부부터로 옮김, free-input: 걸리는 조건이 이용자가 자유 입력·사진에 넣을 수 있다는 추측뿐(확인할 것은 걸리지 않는 것으로 보임, 반박의 뒤집기는 받지 않음), other-side: 저장소가 서버만·화면만이라 반대쪽 의무의 코드에서 본 것을 저장소 밖으로 옮김, prohibition: 금지 의무인데 금지된 행위 자체의 인용이 없음(코드에서 본 것을 받지 않음), same-model: 조사와 반박이 같은 모델이라 충족으로 올리는 뒤집기를 받지 않음, remaining-gap: 충족이라 답하면서 남은 부족한 점을 적음(코드에서 본 것, 반박이면 뒤집기를 받지 않음). free-input 은 그 정보를 받는 입력란·필드·저장이 없다는 검색이 맞을 때만 걸리지 않는 것으로 보임이고, 아니면 해당 여부부터"
                     },
                     {
                       "type": "null"
                     }
                   ]
+                },
+                "remaining": {
+                  "type": "string",
+                  "description": "충족 근거 있음이라 답할 때 적는 남은 부족한 점(없으면 '없음'). 적었으면 충족이 아니라 코드에서 본 것(gate remaining-gap)"
                 }
               },
               "required": [
