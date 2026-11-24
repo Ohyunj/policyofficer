@@ -177,6 +177,16 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="REVIEW_JSON",
         help="같은 저장소·커밋의 앞 review 결과. 이해 단계(서비스 요약·기능·개인정보 흐름)를 묻지 않고 그대로 쓴다",
     )
+    _progress_args(rv)
+    rv.add_argument(
+        "-o",
+        "--output",
+        default=None,
+        metavar="FILE",
+        help="결과 JSON 을 이 파일에도 쓴다. 기본: stdout 이 터미널이면 "
+        "${XDG_CACHE_HOME:-~/.cache}/policypack/reviews/<저장소>-<커밋 12자>.json, 아니면 쓰지 않는다",
+    )
+    rv.add_argument("--json", action="store_true", help="stdout 이 터미널이어도 요약 대신 JSON 을 낸다")
 
     t = sub.add_parser("test", help="정책 팩의 픽스처로 기대 판정을 확인한다 (모델 호출 0회)")
     t.add_argument("paths", nargs="*", help="팩 디렉터리·tests·*.test.yaml 경로 (기본: 내장 팩의 tests)")
@@ -187,6 +197,16 @@ def build_parser() -> argparse.ArgumentParser:
     t.add_argument("--explain", action="store_true", help="통과한 픽스처의 판정 경로도 낸다")
     t.add_argument("--no-color", action="store_true")
     return p
+
+
+def _progress_args(p: argparse.ArgumentParser) -> None:
+    p.add_argument(
+        "--progress",
+        default="auto",
+        choices=["auto", "tty", "plain", "none"],
+        help="진행 표시(stderr). auto(기본): 터미널이면 tty(제자리에서 다시 그림), CI·파이프·파일이면 plain(사건마다 "
+        "한 줄, 제어 문자 없음). none: 그리지 않는다. NO_COLOR 가 있으면 색만 끈다",
+    )
 
 
 # ── validate ────────────────────────────────────────────────────────────────
@@ -873,14 +893,9 @@ def cmd_review(args) -> int:
     except ValueError as e:
         raise ConfigError(str(e)) from e
     from policypack.judge.http import endpoint
+    from policypack.report import progress
+    from policypack.review.events import Begin
 
-    check = "끔" if args.no_rebut else args.checker + ("" if args.rebut_scope == "all" else f"({args.rebut_scope})")
-    print(
-        f"검토({args.model}, 반박 {check}, 묶음 {args.batch}): 모델이 읽은 파일의 코드가 "
-        f"{_redact(endpoint())} 로 나갑니다(비밀값은 가리고 .env 등은 읽지 않음). "
-        f"상한 ${args.max_usd:g}·{args.time_limit:g}초",
-        file=sys.stderr,
-    )
     reuse = None
     if args.reuse:
         try:
@@ -898,11 +913,79 @@ def cmd_review(args) -> int:
         rebut=not args.no_rebut,
         rebut_scope=args.rebut_scope,
     )
-    doc = rv.review(
-        root, investigator, checker, limits, use_static=not args.no_static, throttles=throttles, reuse=reuse
+    begin = Begin(
+        repo=root.resolve().name,
+        commit=rv.commit_of(root.resolve()),
+        model=args.model,
+        checker=None
+        if args.no_rebut
+        else args.checker + ("" if args.rebut_scope == "all" else f"({args.rebut_scope})"),
+        batch=args.batch,
+        usd=args.max_usd,
+        seconds=args.time_limit,
+        concurrency=args.concurrency,
+        egress=_redact(endpoint()),
     )
-    print(json.dumps(doc, ensure_ascii=False, indent=2))
+    summary = sys.stdout.isatty() and not args.json
+    with progress.make(args.progress, sys.stderr) as shown:
+        shown.begin(begin)
+        try:
+            doc = rv.review(
+                root,
+                investigator,
+                checker,
+                limits,
+                use_static=not args.no_static,
+                throttles=throttles,
+                reuse=reuse,
+                progress=shown.emit,
+            )
+        except KeyboardInterrupt:
+            if shown.interrupted():
+                return 130
+            raise
+        shown.finish(line=not summary)
+    _display_error(shown)
+    text = json.dumps(doc, ensure_ascii=False, indent=2)
+    saved = Path(args.output) if args.output else (_review_path(root.resolve(), doc) if summary else None)
+    if saved is not None:
+        try:
+            saved.parent.mkdir(parents=True, exist_ok=True)
+            saved.write_text(text + "\n", encoding="utf-8")
+        except OSError as e:
+            print(f"알림: 결과를 {saved} 에 쓰지 못했습니다({e}). stdout 에 JSON 으로 냅니다.", file=sys.stderr)
+            saved, summary = None, False
+    if summary:
+        _print_summary(doc, saved)
+    else:
+        print(text)
     return EXIT_OK
+
+
+def _review_path(root: Path, doc: dict) -> Path:
+    """터미널에서 돌린 review 의 결과를 둘 곳. 분석하는 저장소 안에는 파일을 만들지 않는다."""
+    commit = (doc.get("profile") or {}).get("commit")
+    tag = commit[:12] if commit else time.strftime("%Y%m%d-%H%M%S")
+    cache = os.environ.get("XDG_CACHE_HOME") or str(Path.home() / ".cache")
+    return Path(cache) / "policypack" / "reviews" / f"{root.name}-{tag}.json"
+
+
+def _print_summary(doc: dict, saved: Path | None) -> None:
+    from policypack.report import progress
+    from policypack.report.review_text import render
+
+    tty = sys.stdout.isatty()
+    cols = progress.size(sys.stdout)[0] - 1 if tty else None
+    sys.stdout.write(render(doc, saved, tty and progress.color(), cols, progress.utf8(sys.stdout)))
+    sys.stdout.flush()
+
+
+def _display_error(shown) -> None:
+    if shown.error is not None:
+        print(
+            f"알림: 진행 표시를 그리다 오류가 나 표시를 껐습니다({shown.error!r}). 결과에는 영향이 없습니다.",
+            file=sys.stderr,
+        )
 
 
 COMMANDS = {
