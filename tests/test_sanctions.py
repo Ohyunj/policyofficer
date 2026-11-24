@@ -27,6 +27,8 @@ def test_the_table_has_one_record_for_each_duty_the_review_asks():
     assert {s["class"] for s in table.values()} <= set(profile.SANCTION_CLASSES)
     assert all(i["quote"].strip() for s in table.values() for i in s["items"])
     assert all("duty" not in s for s in table.values())
+    # 화면은 '어기면 · {label}' 이라 label 안에 '어기면'이 또 있으면 두 번 읽힌다(11/24 jobtalk 실행 화면)
+    assert not [d for d, s in table.items() if "어기면" in s["label"]]
 
 
 @pytest.fixture
@@ -115,11 +117,11 @@ def test_the_summary_puts_heavier_sanctions_first_and_marks_prison_and_fines():
         if cols:
             assert all(progress.width(ln) <= cols for ln in out.splitlines())
     long_ = _item(7, "명령", 30_000_000, "check-applicability")
-    long_["sanction"]["label"] = "시정명령을 어기면 과태료 3천만원 · 악의적이면 징역 3년"
+    long_["sanction"]["label"] = "시정명령 불이행 시 과태료 3천만원 · 악의적이면 징역 3년"
     doc["checklist"].append(long_)
     narrow, wide = render(doc, None, False, 80), render(doc, None, False, 140)
-    assert re.search(r"^      어기면 · 시정명령을 어기면 과태료 3천만원", narrow, re.M)  # 좁으면 다음 줄로 내린다
-    assert re.search(r"제7조 · .+  어기면 · 시정명령을 어기면", wide)
+    assert re.search(r"^      어기면 · 시정명령 불이행 시 과태료 3천만원", narrow, re.M)  # 좁으면 다음 줄로 내린다
+    assert re.search(r"제7조 · .+  어기면 · 시정명령 불이행 시", wide)
     assert SANCTION_NOTE.replace(" ", "") in render(doc, None, False, 80).replace("\n", "").replace(" ", "")
 
 
