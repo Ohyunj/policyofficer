@@ -51,6 +51,35 @@ def load_duties() -> tuple[dict, ...]:
     return tuple(json.loads(line) for line in lines if line.strip())
 
 
+SANCTION_CLASSES = ("징역", "과징금", "벌금", "과태료", "명령", "없음")
+"""제재 등급. 이 순서가 무거운 순서다(review 요약의 정렬)."""
+
+
+@cache
+def load_sanctions() -> dict[str, dict]:
+    """의무별 제재 표(sanctions.jsonl): 의무 id → 레코드(duty 를 뺀 것). 의무를 어기면 법에 적힌 제재를 조문 인용과 함께
+    적은 표다. 등급(class)은 AI 판단이 아니라 법령 원문의 벌칙·과징금·과태료 조문으로 정했다(만든 곳: 디렉터 세션
+    2026-11-24, 형식은 docs/output.md). 불러올 때 검사하고 어긋나면 ValueError 다.
+      - AI 검토가 묻는 의무(duties.jsonl 에서 addressee 가 있는 것)와 1:1
+      - class 는 SANCTION_CLASSES 의 하나
+      - items 의 quote 는 비어 있지 않다"""
+    rows = [json.loads(line) for line in (HERE / "sanctions.jsonl").read_text(encoding="utf-8").splitlines() if line]
+    asked = {d["id"] for d in load_duties() if d.get("addressee")}
+    ids = [r.get("duty") for r in rows]
+    twice = sorted({i for i in ids if ids.count(i) > 1})
+    missing, extra = sorted(asked - set(ids)), sorted(set(ids) - asked)
+    if twice or missing or extra:
+        raise ValueError(
+            f"sanctions.jsonl 이 묻는 의무와 1:1 이 아닙니다: 두 번 {twice} · 빠짐 {missing} · 남음 {extra}"
+        )
+    for r in rows:
+        if r.get("class") not in SANCTION_CLASSES:
+            raise ValueError(f"sanctions.jsonl {r['duty']}: class {r.get('class')!r} 는 {SANCTION_CLASSES} 가 아닙니다")
+        if any(not str(i.get("quote") or "").strip() for i in r.get("items") or []):
+            raise ValueError(f"sanctions.jsonl {r['duty']}: 조문 인용(quote)이 빈 항목이 있습니다")
+    return {r["duty"]: {k: v for k, v in r.items() if k != "duty"} for r in rows}
+
+
 @dataclass(frozen=True)
 class Hit:
     feature: str

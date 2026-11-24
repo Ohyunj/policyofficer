@@ -53,7 +53,8 @@
    not-run, why rebut-scope).
 6. 체크리스트는 상태의 갈래 순(코드에서 본 것이 맨 위), 그 안에서는 거의 모든 서비스·가입·AI·외부 전송 순이다.
    기능 안에서는 핵심 의무(일반 범위 → 흔한 것 → 확신 높은 것)가 먼저이고 품목 의무가 맨 뒤다. 묻는 순서도 같아서
-   상한에 걸려도 핵심은 묻는다. `summary` 에 갈래별 수와 맨 위 다섯 건, 묶음(groups)이 있다.
+   상한에 걸려도 핵심은 묻는다. `summary` 에 갈래별 수와 맨 위 다섯 건, 묶음(groups)이 있다. 항목마다 의무별 제재
+   (sanction, profile/sanctions.jsonl)를 붙인다.
 
 지키는 것: 인용 관문, 비밀값 가리기·비밀 파일 거부(judge/agent.RepoTools), 저장소 밖 읽기 금지, 저장소당 상한(어림
 금액·시간). 상한 때문에 묻지 못한 의무는 '모름'으로 싣고 까닭을 적는다. 동시 요청은 429 를 보면 반으로 줄인다.
@@ -63,6 +64,7 @@
 
 from __future__ import annotations
 
+import copy
 import io
 import os
 import queue
@@ -79,7 +81,7 @@ from policypack import __version__
 from policypack.evaluate.agent_pass import gate
 from policypack.index.roles import SERVICE, Role, classify
 from policypack.judge.agent import AgentAnswer, AgentJudge, RepoTools
-from policypack.profile import load_duties, load_features, profile
+from policypack.profile import load_duties, load_features, load_sanctions, profile
 from policypack.review import events as E
 from policypack.review import prompts as P
 
@@ -1067,7 +1069,7 @@ def _rebutted(x: E.Duty, r: dict, f: dict) -> E.Result:
 
 
 def _base(d: dict, static: list[dict]) -> dict:
-    return {
+    out = {
         "duty": d["id"],
         "feature": d["feature"],
         "law": d["law"],
@@ -1079,6 +1081,16 @@ def _base(d: dict, static: list[dict]) -> dict:
         "krcore": d.get("krcore", False),
         "static": static,
     }
+    return with_sanction(out)
+
+
+def with_sanction(item: dict) -> dict:
+    """체크리스트 항목에 의무별 제재(profile/sanctions.jsonl 의 레코드에서 duty 를 뺀 것)를 붙인다. 표에 없는 의무나
+    이미 붙은 항목은 그대로다. 기록 재생은 이것으로 옛 결과에도 붙인다."""
+    s = load_sanctions().get(item.get("duty", ""))
+    if s is not None and "sanction" not in item:
+        item["sanction"] = copy.deepcopy(s)
+    return item
 
 
 def _goods_item(d: dict, g: dict) -> dict:
