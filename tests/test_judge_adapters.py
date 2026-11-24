@@ -14,11 +14,11 @@ from pathlib import Path
 
 import pytest
 
-from policypack.cli import main
-from policypack.judge import claude_cli
-from policypack.judge.base import SYSTEM, Question, json_only, parse_answer
-from policypack.judge.claude_cli import ISOLATION_FLAGS, ISOLATION_SHA, ClaudeCliJudge, build_command
-from policypack.judge.http import Unavailable
+from policyofficer.cli import main
+from policyofficer.judge import claude_cli
+from policyofficer.judge.base import SYSTEM, Question, json_only, parse_answer
+from policyofficer.judge.claude_cli import ISOLATION_FLAGS, ISOLATION_SHA, ClaudeCliJudge, build_command
+from policyofficer.judge.http import Unavailable
 
 REPO = Path(__file__).resolve().parents[1]
 
@@ -259,7 +259,7 @@ def test_answer_normalization(word, expected):
 
 
 def test_build_dispatch():
-    from policypack.judge.anthropic_api import AnthropicApiJudge, build
+    from policyofficer.judge.anthropic_api import AnthropicApiJudge, build
 
     assert isinstance(build("claude-cli:sonnet").inner, ClaudeCliJudge)
     assert build("claude-cli:sonnet").id == "claude-cli:sonnet"
@@ -271,7 +271,7 @@ def test_build_dispatch():
 
 def test_api_judge_without_a_key_fails_softly(monkeypatch):
     """키가 없다고 터지면 안 된다. 판정 하나가 '모름'이 될 뿐이다."""
-    from policypack.judge.anthropic_api import AnthropicApiJudge
+    from policyofficer.judge.anthropic_api import AnthropicApiJudge
 
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     a = AnthropicApiJudge("haiku").ask(Q)
@@ -280,7 +280,7 @@ def test_api_judge_without_a_key_fails_softly(monkeypatch):
 
 def test_both_adapters_send_the_same_prompt():
     """어느 어댑터를 쓰든 판정자가 받는 지시가 같아야 한다."""
-    from policypack.judge.anthropic_api import AnthropicApiJudge
+    from policyofficer.judge.anthropic_api import AnthropicApiJudge
 
     assert ClaudeCliJudge("haiku").system == AnthropicApiJudge("haiku").system == SYSTEM
 
@@ -314,7 +314,7 @@ def test_a_run_never_asks_the_same_question_twice(tmp_path, monkeypatch, capsys)
         encoding="utf-8",
     )
     fake.chmod(0o755)
-    import policypack.judge.claude_cli as claude_cli
+    import policyofficer.judge.claude_cli as claude_cli
 
     monkeypatch.setattr(claude_cli, "BIN", str(fake))
     monkeypatch.setenv("FAKE_CLAUDE_LOG", str(log))
@@ -347,7 +347,7 @@ class _Flaky:
         self.failures, self.calls = list(failures), 0
 
     def ask(self, q):
-        from policypack.judge.base import Answer
+        from policyofficer.judge.base import Answer
 
         self.calls += 1
         kind = self.failures.pop(0) if self.failures else None
@@ -362,7 +362,7 @@ def test_a_judge_that_keeps_timing_out_is_given_up_on():
     """멈춘 판정자는 질문마다 시간 제한(180초)을 다 쓰고 질문은 하나씩 간다. 245개면 약 12시간이었다(실측).
     연달아 세 번 시간 안에 답하지 않으면 그 실행에서는 더 부르지 않는다. 묻지 않은 질문은 부르지 못한 것으로 남고
     그 수를 센다."""
-    from policypack.judge.base import OncePerRun
+    from policyofficer.judge.base import OncePerRun
 
     inner = _Flaky(["timeout"] * 10)
     judge = OncePerRun(inner)
@@ -374,7 +374,7 @@ def test_a_judge_that_keeps_timing_out_is_given_up_on():
 def test_request_rejections_do_not_switch_the_judge_off():
     """연결 실패·거절은 그 질문만의 문제일 수 있다(너무 긴 프롬프트 등). 세면 큰 파일 셋이 이어질 때 나머지 질문을
     모두 버렸다(검토에서 실측). 띄엄띄엄 난 시간 초과도 포기하지 않는다."""
-    from policypack.judge.base import OncePerRun
+    from policyofficer.judge.base import OncePerRun
 
     inner = _Flaky(["transport"] * 5 + ["timeout", "timeout", None, "timeout", "timeout"])
     judge = OncePerRun(inner)
@@ -388,9 +388,9 @@ def test_an_unreachable_api_judge_is_given_up_on_and_reports_its_real_model():
     판정자 그만 묻기가
     돌지 않았다(웹 쪽 검토 R24). 서비스에 닿지 못한 답은 세고, 그 질문만 거절된 답은 세지 않는다.
     run.judge 에는 별칭이 아니라 실제 모델 id 가 실린다(R7)."""
-    from policypack.judge.anthropic_api import AnthropicApiJudge
-    from policypack.judge.base import OncePerRun
-    from policypack.judge.http import Unavailable
+    from policyofficer.judge.anthropic_api import AnthropicApiJudge
+    from policyofficer.judge.base import OncePerRun
+    from policyofficer.judge.http import Unavailable
 
     calls = []
 
@@ -414,7 +414,7 @@ def test_an_unreachable_api_judge_is_given_up_on_and_reports_its_real_model():
 def test_the_judge_never_sees_secrets():
     """판정자(--judge)로 가는 코드도 에이전트처럼 비밀값을 가린다. 줄 수는 그대로라 인용의 줄이 맞는다.
     가린 수는 보고서 run.judge_masked 로 간다."""
-    from policypack.judge.base import Answer, OncePerRun
+    from policyofficer.judge.base import Answer, OncePerRun
 
     seen = []
 
@@ -451,7 +451,7 @@ def test_code_cannot_close_the_prompt_fence():
 
 def test_the_egress_notice_never_prints_credentials():
     """ANTHROPIC_BASE_URL 에 붙은 계정·토큰이 CI 로그에 그대로 찍혔고, 기본 주소도 '목적지가 바뀝니다'로 알렸다."""
-    from policypack.cli import _egress_notice
+    from policyofficer.cli import _egress_notice
 
     notice = _egress_notice(
         "claude-cli:haiku", {"ANTHROPIC_BASE_URL": "https://ci:SECRET-123@gw.example.invalid/v1?key=K9"}
@@ -466,7 +466,7 @@ def test_the_egress_notice_never_prints_credentials():
 
 def test_questions_sent_are_counted_apart_from_questions_asked():
     """같은 질문은 한 번만 부른다. 요약의 'AI 질문 N개'만 보면 사용량을 부풀려 읽는다."""
-    from policypack.judge.base import OncePerRun
+    from policyofficer.judge.base import OncePerRun
 
     inner = _Flaky([])
     judge = OncePerRun(inner)
@@ -478,7 +478,7 @@ def test_questions_sent_are_counted_apart_from_questions_asked():
 
 def test_api_judge_drops_temperature_when_the_model_refuses_it():
     """5.5 세대 모델은 temperature 를 받지 않는다(400). 한 번 빼고 다시 보내고, 그 뒤로는 넣지 않는다."""
-    from policypack.judge.anthropic_api import AnthropicApiJudge
+    from policyofficer.judge.anthropic_api import AnthropicApiJudge
 
     sent = []
 
@@ -499,7 +499,7 @@ def test_api_judge_drops_temperature_when_the_model_refuses_it():
 
 
 def test_api_judge_transport_errors_are_soft():
-    from policypack.judge.anthropic_api import AnthropicApiJudge
+    from policyofficer.judge.anthropic_api import AnthropicApiJudge
 
     def boom(body):
         raise RuntimeError("연결 실패: timed out")
@@ -508,7 +508,7 @@ def test_api_judge_transport_errors_are_soft():
 
 
 def test_http_endpoint_follows_base_url():
-    from policypack.judge.http import endpoint
+    from policyofficer.judge.http import endpoint
 
     assert endpoint({}) == "https://api.anthropic.com/v1/messages"
     assert endpoint({"ANTHROPIC_BASE_URL": "https://gw.example.com/anthropic/"}) == (
@@ -520,7 +520,7 @@ def test_http_transport_retries_dropped_connections(monkeypatch):
     import json as _json
     import urllib.request
 
-    from policypack.judge.http import http_transport
+    from policyofficer.judge.http import http_transport
 
     calls = []
 
@@ -555,7 +555,7 @@ def test_http_transport_retries_dropped_connections(monkeypatch):
 def test_http_transport_gives_up_after_two_timeouts(monkeypatch):
     import urllib.request
 
-    from policypack.judge.http import http_transport
+    from policyofficer.judge.http import http_transport
 
     calls = []
 
@@ -577,7 +577,7 @@ def test_http_transport_tells_a_refused_request_from_an_unreachable_service(monk
     import urllib.error
     import urllib.request
 
-    from policypack.judge.http import http_transport
+    from policyofficer.judge.http import http_transport
 
     def refuse(req, timeout):
         raise urllib.error.HTTPError("https://x", code, "x", {}, io.BytesIO(b"no"))

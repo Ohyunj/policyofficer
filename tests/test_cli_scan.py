@@ -11,8 +11,8 @@ from pathlib import Path
 
 import pytest
 
-from policypack.cli import main
-from policypack.discover import discover, language_of
+from policyofficer.cli import main
+from policyofficer.discover import discover, language_of
 
 REPO = Path(__file__).resolve().parents[1]
 FIX = "policies/kr-core/tests"
@@ -67,7 +67,7 @@ def test_exit_2_on_unknown_judge(capsys):
 
 def test_internal_errors_exit_2_not_1(monkeypatch, capsys):
     """처리하지 못한 예외로 파이썬이 1로 끝나면 CI 는 '검토 필요'로 읽는다."""
-    import policypack.cli as cli
+    import policyofficer.cli as cli
 
     monkeypatch.setitem(cli.COMMANDS, "scan", lambda args: 1 / 0)
     assert cli.main(["scan"]) == 2
@@ -186,7 +186,7 @@ def test_sarif_carries_the_statute_text(sarif):
 
 def test_sarif_marks_the_pack_authors_words_as_not_the_statute(sarif):
     """help.markdown 에는 팩 작성자의 글과 조문 원문이 함께 실린다. 작성자의 글이 법의 말로 읽히면 안 된다."""
-    from policypack.pack.loader import load_pack
+    from policyofficer.pack.loader import load_pack
 
     rules = {r["id"]: r for r in sarif["runs"][0]["tool"]["driver"]["rules"]}
     md = rules["kr.pipa.22-2/signup-without-guard"]["help"]["markdown"]
@@ -230,8 +230,8 @@ def test_sarif_records_how_it_was_run(sarif):
 
 def test_fingerprint_survives_an_unrelated_line_above(tmp_path):
     """위에 줄 하나 넣었다고 baseline 이 깨지면 안 된다."""
-    from policypack.report.fingerprint import fingerprint
-    from policypack.report.outcome import Finding, Outcome
+    from policyofficer.report.fingerprint import fingerprint
+    from policyofficer.report.outcome import Finding, Outcome
 
     src = (REPO / VIOLATING).read_text(encoding="utf-8")
     a = tmp_path / "a.ts"
@@ -246,8 +246,8 @@ def test_fingerprint_survives_an_unrelated_line_above(tmp_path):
 
 
 def test_fingerprint_changes_when_the_pack_changes(tmp_path):
-    from policypack.report.fingerprint import fingerprint
-    from policypack.report.outcome import Finding, Outcome
+    from policyofficer.report.fingerprint import fingerprint
+    from policyofficer.report.outcome import Finding, Outcome
 
     f = Finding(policy="p", rule="r", outcome=Outcome.NEEDS_REVIEW, file=str(REPO / VIOLATING), line=None)
     assert fingerprint(f, "digest-a") != fingerprint(f, "digest-b")
@@ -323,7 +323,7 @@ def test_named_file_is_taken_regardless_of_extension(tmp_path):
 
 def test_defaults_fall_back_to_the_bundled_copy(tmp_path, monkeypatch):
     """pre-commit 훅은 사용자 저장소에서 돈다. 거기에는 policies/ 가 없다."""
-    import policypack.defaults as d
+    import policyofficer.defaults as d
 
     bundled = tmp_path / "_bundled"
     (bundled / "policies" / "kr-core").mkdir(parents=True)
@@ -334,7 +334,7 @@ def test_defaults_fall_back_to_the_bundled_copy(tmp_path, monkeypatch):
 
 
 def test_environment_overrides_defaults(tmp_path, monkeypatch):
-    import policypack.defaults as d
+    import policyofficer.defaults as d
 
     monkeypatch.setenv("POLICYPACK_PACK", str(tmp_path / "mine"))
     assert d.default_pack() == tmp_path / "mine"
@@ -417,11 +417,11 @@ def test_ai_no_overturns_a_weak_static_alternative():
 
     guardian-call.ts 는 checkGuardianConsent 같은 이름 때문에 guardian-call(약한 대안)이 참이 된다.
     약한 근거는 혼자 경고를 풀지 못하고, AI 의 '아니오'가 그 자리를 대신한다."""
-    from policypack.evaluate.engine import Target, evaluate
-    from policypack.judge.fake import FakeJudge
-    from policypack.pack.loader import load_pack
-    from policypack.static.compile import compile_static
-    from policypack.static.semgrep_cli import SemgrepBackend
+    from policyofficer.evaluate.engine import Target, evaluate
+    from policyofficer.judge.fake import FakeJudge
+    from policyofficer.pack.loader import load_pack
+    from policyofficer.static.compile import compile_static
+    from policyofficer.static.semgrep_cli import SemgrepBackend
 
     pack = load_pack(REPO / "policies/kr-core")
     f = REPO / FIX / "pipa-22-2" / "guardian-call.ts"
@@ -517,7 +517,7 @@ def test_default_scan_survives_an_unparsable_file_that_needs_an_applicability_qu
 
 def test_reports_name_the_engine_that_produced_them(capsys):
     """엔진이나 판이 바뀌면 결과가 달라질 수 있다. 보고서만 보고도 어느 엔진인지 알아야 한다."""
-    from policypack.static.semgrep_cli import EXPECTED_VERSION
+    from policyofficer.static.semgrep_cli import EXPECTED_VERSION
 
     run(f"{FIX}/pipa-22-2", "--output-format", "json", "--no-color")
     engine = json.loads(capsys.readouterr().out)["run"]["engine"]
@@ -542,7 +542,7 @@ def test_fail_on_review_ignores_uncertain_only(capsys):
 
 def test_a_missing_claude_cli_is_a_setup_error(monkeypatch, capsys):
     """claude 가 없으면 모든 질문이 까닭 없이 실패로 남는다. 시작할 때 설정 오류로 알린다."""
-    import policypack.judge.claude_cli as claude_cli
+    import policyofficer.judge.claude_cli as claude_cli
 
     monkeypatch.setattr(claude_cli, "BIN", "/nonexistent/claude")
     assert run(VIOLATING, "--judge", "claude-cli:haiku", "--no-color") == 2
@@ -557,9 +557,9 @@ def test_a_missing_api_key_is_a_setup_error(monkeypatch, capsys):
 
 def test_a_judge_whose_binary_vanishes_fails_softly(monkeypatch):
     """준비를 통과한 뒤 실행 파일이 사라져도 도구 오류가 아니라 판정자 실패다."""
-    import policypack.judge.claude_cli as claude_cli
-    from policypack.judge.base import Question
-    from policypack.judge.claude_cli import ClaudeCliJudge
+    import policyofficer.judge.claude_cli as claude_cli
+    from policyofficer.judge.base import Question
+    from policyofficer.judge.claude_cli import ClaudeCliJudge
 
     monkeypatch.setattr(claude_cli, "BIN", "/nonexistent/claude")
     q = Question(text="?", code="x", lang="typescript", policy="p", rule="r", predicate="a")
@@ -589,7 +589,7 @@ def test_usage_errors_are_reported_like_other_errors(capsys):
 
 
 def test_ctrl_c_is_one_line_not_a_traceback(monkeypatch, capsys):
-    import policypack.cli as cli
+    import policyofficer.cli as cli
 
     def interrupted(args):
         raise KeyboardInterrupt
@@ -600,7 +600,7 @@ def test_ctrl_c_is_one_line_not_a_traceback(monkeypatch, capsys):
 
 
 def test_sarif_points_only_at_addresses_we_have(sarif):
-    """우리가 갖지 않은 저장소 주소(github.com/policypack/policypack)를 도구 주소·도움말 주소로 넣었다."""
+    """우리가 갖지 않은 저장소 주소(github.com/policyofficer/policyofficer)를 도구 주소·도움말 주소로 넣었다."""
     driver = sarif["runs"][0]["tool"]["driver"]
     assert "informationUri" not in driver
     assert all(r.get("helpUri", "https://www.law.go.kr").startswith("https://www.law.go.kr") for r in driver["rules"])

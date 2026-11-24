@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from policypack.index import Role, build_index, classify
+from policyofficer.index import Role, build_index, classify
 
 
 def write(root: Path, files: dict[str, str]) -> list[Path]:
@@ -125,7 +125,7 @@ def test_related_two_hops_skips_tests_and_respects_limit(tmp_path):
 
 
 def test_candidate_units_group_by_policy_and_file(tmp_path):
-    from policypack.index.units import candidate_units
+    from policyofficer.index.units import candidate_units
 
     files = write(
         tmp_path,

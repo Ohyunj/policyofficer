@@ -1,5 +1,5 @@
 [project]
-name = "policypack"
+name = "policyofficer"
 version = "0.3.0.dev0"
 description = "국내 법·정책 관점에서 코드를 검토하는 정책 팩 해석기"
 readme = "README.md"
@@ -17,7 +17,7 @@ dependencies = [
 ]
 
 [project.scripts]
-policypack = "policypack.cli:main"
+policyofficer = "policyofficer.cli:main"
 
 [dependency-groups]
 dev = [
@@ -31,12 +31,12 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/policypack"]
+packages = ["src/policyofficer"]
 
 # 정책 팩을 휠에 싣는다. pre-commit 훅처럼 사용자 저장소에서 돌 때
 # 그 저장소에는 policies/ 가 없으므로, 기본값을 패키지 안에서 찾아야 한다.
 [tool.hatch.build.targets.wheel.force-include]
-"policies/kr-core" = "policypack/_bundled/policies/kr-core"
+"policies/kr-core" = "policyofficer/_bundled/policies/kr-core"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -51,5 +51,5 @@ select = ["E", "F", "W", "I", "UP", "B", "SIM"]
 
 [tool.ruff.lint.per-file-ignores]
 # 판정자에게 보내는 프롬프트는 원문 그대로 유지한다. 줄을 자르면 모델 입력이 달라진다.
-"src/policypack/judge/base.py" = ["E501"]
-"src/policypack/review/prompts.py" = ["E501"]
+"src/policyofficer/judge/base.py" = ["E501"]
+"src/policyofficer/review/prompts.py" = ["E501"]

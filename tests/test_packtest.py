@@ -1,4 +1,4 @@
-"""`policypack test` — 정책 작성자의 단위 테스트가 믿을 만한가.
+"""`policyofficer test` — 정책 작성자의 단위 테스트가 믿을 만한가.
 
 이 명령이 거짓으로 통과하면, 새 정책이 대안 하나를 조용히 못 알아보는 채로 들어온다.
 그래서 러너 자체를 시험한다: 스텁이 근거 관문을 우회하지 못하는지, 답 없는 질문이
@@ -12,9 +12,9 @@ from pathlib import Path
 
 import pytest
 
-from policypack.cli import main
-from policypack.model import Strength
-from policypack.pack.loader import load_pack, pack_digest
+from policyofficer.cli import main
+from policyofficer.model import Strength
+from policyofficer.pack.loader import load_pack, pack_digest
 
 REPO = Path(__file__).resolve().parents[1]
 KR_CORE = REPO / "policies" / "kr-core"
@@ -178,7 +178,7 @@ def test_bad_test_files_are_tool_errors(tmp_path, capsys, cases, rule, msg):
 
 def test_yes_and_no_are_strings_not_booleans(tmp_path):
     """YAML 1.1 이면 no 가 False 가 된다. ruamel(1.2)로 읽는다."""
-    from policypack.packtest import PolicyTestFile, _read_yaml
+    from policyofficer.packtest import PolicyTestFile, _read_yaml
 
     p = write_suite(tmp_path, "  - file: violating.ts\n    expect: needs-review\n    ai: {ai-guard: no}\n")
     tf = PolicyTestFile.model_validate(_read_yaml(p))
@@ -189,7 +189,7 @@ def test_yes_and_no_are_strings_not_booleans(tmp_path):
 
 
 def test_can_clear_alone_follows_the_planner():
-    from policypack.packtest import can_clear_alone
+    from policyofficer.packtest import can_clear_alone
 
     pack = load_pack(KR_CORE)
     for _, rule in pack.iter_rules():
@@ -200,9 +200,9 @@ def test_can_clear_alone_follows_the_planner():
 
 def test_worst_outcome_wins_when_a_rule_yields_several_findings():
     """scope: anchor 에서는 한 파일에 판정이 여럿이다. 하나라도 경고면 경고다."""
-    from policypack.evaluate.engine import EvalResult
-    from policypack.packtest import Fixture, outcome_table
-    from policypack.report.outcome import Finding, Outcome
+    from policyofficer.evaluate.engine import EvalResult
+    from policyofficer.packtest import Fixture, outcome_table
+    from policyofficer.report.outcome import Finding, Outcome
 
     pack = load_pack(KR_CORE)
     fx = Fixture(id="f", path=Path("f.ts"), lang="typescript", expects={})
@@ -271,8 +271,8 @@ def test_yml_extension_is_refused_not_skipped(tmp_path, capsys):
 
 def test_can_clear_alone_agrees_with_the_engine_without_ai_alternatives():
     """AI 대안이 없는 규칙의 약한 대안: 재확인할 판정자가 없으니 혼자 풀 수 없다(엔진과 같다)."""
-    from policypack.model import Rule
-    from policypack.packtest import can_clear_alone
+    from policyofficer.model import Rule
+    from policyofficer.packtest import can_clear_alone
 
     rule = Rule.model_validate(
         {

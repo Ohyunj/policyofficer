@@ -11,8 +11,8 @@ from pathlib import Path
 
 import pytest
 
-from policypack.cli import main
-from policypack.static.semgrep_cli import SemgrepBackend
+from policyofficer.cli import main
+from policyofficer.static.semgrep_cli import SemgrepBackend
 
 REPO = Path(__file__).resolve().parents[1]
 CASE = "policies/kr-core/tests/pipa-22-2/violating.ts"
@@ -33,7 +33,7 @@ def _inject(monkeypatch, errors_for):
         data["results"] = [
             r
             for r in data["results"]
-            if (r.get("extra", {}).get("metadata", {}).get("policypack") or {}).get("predicate") != PREDICATE
+            if (r.get("extra", {}).get("metadata", {}).get("policyofficer") or {}).get("predicate") != PREDICATE
         ]
         data.setdefault("errors", []).extend(errors_for(config, targets))
         return data, elapsed
@@ -98,7 +98,7 @@ def test_sarif_names_engine_errors_and_unfinished_files(monkeypatch, capsys):
     assert "locations" not in engine_error and "OOM" in engine_error["message"]["text"]
 
 
-def test_policypack_test_says_why_everything_failed(monkeypatch, capsys):
+def test_policyofficer_test_says_why_everything_failed(monkeypatch, capsys):
     """경로 없는 오류 하나로 픽스처가 대량 실패해도 원인이 어디에도 없어 규칙 회귀로 오인했다(검토에서 실측)."""
     _inject(monkeypatch, lambda config, targets: [{"type": "Timeout", "level": "error", "message": "t"}])
     main(["test", "--exit-zero", "--no-color"])

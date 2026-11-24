@@ -14,9 +14,9 @@ from pathlib import Path
 import pytest
 from pydantic import BaseModel
 
-from policypack.errors import PackError
-from policypack.model import LegalRef, PolicyPack
-from policypack.pack.loader import check_legal_texts, check_review_dates, load_pack, pack_digest
+from policyofficer.errors import PackError
+from policyofficer.model import LegalRef, PolicyPack
+from policyofficer.pack.loader import check_legal_texts, check_review_dates, load_pack, pack_digest
 
 REPO = Path(__file__).resolve().parents[1]
 KR_CORE = REPO / "policies" / "kr-core"
@@ -246,7 +246,7 @@ WITH_DUTY = MINIMAL.replace("    title: 시험 정책\n", "    title: 시험 정
 
 
 def test_kr_core_duties_point_into_its_catalog(pack):
-    from policypack.pack.loader import load_duties
+    from policyofficer.pack.loader import load_duties
 
     have = load_duties(KR_CORE)
     assert all(pol.duties for pol in pack.policies), "kr-core 의 정책은 모두 의무를 가리킨다"
@@ -383,7 +383,7 @@ def test_removed_keys_are_refused(tmp_path, text):
 
 
 def test_validate_passes_on_kr_core(capsys):
-    from policypack.cli import main
+    from policyofficer.cli import main
 
     assert main(["validate", "--strict"]) == 0
     assert "문법에 맞고, 미완인 곳도 없습니다" in capsys.readouterr().out
@@ -393,7 +393,7 @@ def test_validate_reports_an_amended_statute(tmp_path, capsys):
     """커밋한 조문 원문이 바뀌면 validate 가 알린다. --strict 면 실패다."""
     import shutil
 
-    from policypack.cli import main
+    from policyofficer.cli import main
 
     copy = tmp_path / "kr-core"
     shutil.copytree(KR_CORE, copy, ignore=shutil.ignore_patterns("tests"))
@@ -415,7 +415,7 @@ def test_validate_reports_an_amended_statute(tmp_path, capsys):
 def test_validate_runs_the_static_conditions_through_the_engine(tmp_path, capsys, broken):
     """문법 검사(pydantic)는 패턴·정규식·언어 이름을 읽지 않는다. 그래서 validate 가 '문법에 맞습니다'라고 한 팩을
     scan 이 거절했다(끝까지 점검에서 실측). 규칙 오류는 엔진의 임시 경로가 아니라 팩의 이름으로 적는다."""
-    from policypack.cli import main
+    from policyofficer.cli import main
 
     text = MINIMAL
     for old, new in broken.items():
@@ -433,8 +433,8 @@ def test_validate_runs_the_static_conditions_through_the_engine(tmp_path, capsys
 def test_validate_also_runs_the_function_boundary_rule_through_the_engine(monkeypatch, capsys):
     """검사는 함수 단위 규칙이 걸리는 파일이 있을 때만 함수 경계 규칙을 엔진에 넘긴다. validate 가 같은 길을 타면
     빈 파일 하나로는 경계 규칙이 엔진에 가지 않아, 엔진이 거절할 경계 패턴을 통과시켰다(검토에서 실측)."""
-    from policypack.cli import main
-    from policypack.static import compile as compile_mod
+    from policyofficer.cli import main
+    from policyofficer.static import compile as compile_mod
 
     assert main(["validate", str(KR_CORE)]) == 0
     capsys.readouterr()
@@ -446,7 +446,7 @@ def test_validate_also_runs_the_function_boundary_rule_through_the_engine(monkey
 
 def test_validate_warns_about_languages_a_folder_scan_never_selects(tmp_path, capsys):
     """Semgrep 이 아는 언어여도(rust) 폴더 검사는 그 파일을 고르지 않는다. 팩이 조용히 아무것도 검사하지 않았다."""
-    from policypack.cli import main
+    from policyofficer.cli import main
 
     _write(
         tmp_path,
@@ -459,7 +459,7 @@ def test_validate_warns_about_languages_a_folder_scan_never_selects(tmp_path, ca
 
 def test_committed_schemas_match_the_model_and_nothing_else_is_there():
     """커밋한 schemas/ 가 모델과 같고, 지운 문법의 스키마 파일이 남아 있지 않다."""
-    from policypack.cli import SCHEMAS, main
+    from policyofficer.cli import SCHEMAS, main
 
     assert main(["schema", "--check"]) == 0
     # report-1.json·review-2.json 은 손으로 쓴 보고서 스키마다(모델이 없다). tests/test_report_schema.py 와
@@ -471,7 +471,7 @@ def test_committed_schemas_match_the_model_and_nothing_else_is_there():
 def test_doctor_finds_the_engine(capsys):
     import json
 
-    from policypack.cli import main
+    from policyofficer.cli import main
 
     assert main(["doctor", "--json"]) == 0
     info = json.loads(capsys.readouterr().out)
@@ -488,7 +488,7 @@ def test_an_expired_review_date_is_reported():
 
 def test_schema_refuses_to_run_outside_a_source_checkout(tmp_path, monkeypatch, capsys):
     """설치본에서 돌리면 SCHEMA_DIR 가 엉뚱한 곳을 가리킨다. 거기 만들거나 지우면 안 된다."""
-    import policypack.cli as cli
+    import policyofficer.cli as cli
 
     monkeypatch.setattr(cli, "SCHEMA_DIR", tmp_path / "schemas")
     (tmp_path / "schemas").mkdir()
@@ -499,10 +499,10 @@ def test_schema_refuses_to_run_outside_a_source_checkout(tmp_path, monkeypatch, 
 
 
 def test_schema_write_removes_only_our_stale_files(tmp_path, monkeypatch):
-    import policypack.cli as cli
+    import policyofficer.cli as cli
 
     (tmp_path / "pyproject.toml").write_text("", encoding="utf-8")
-    (tmp_path / "src" / "policypack").mkdir(parents=True)
+    (tmp_path / "src" / "policyofficer").mkdir(parents=True)
     schemas = tmp_path / "schemas"
     schemas.mkdir()
     (schemas / "policy-pack-0.2.json").write_text("{}", encoding="utf-8")
@@ -530,7 +530,7 @@ def test_a_changed_statute_text_is_not_embedded_in_sarif(tmp_path):
     """해시가 다르면 팩이 말하는 조문이 아니다. validate 가 알리고, SARIF 는 싣지 않는다."""
     import shutil
 
-    from policypack.report.sarif import _statute_text
+    from policyofficer.report.sarif import _statute_text
 
     copy = tmp_path / "kr-core"
     shutil.copytree(KR_CORE, copy, ignore=shutil.ignore_patterns("tests"))
@@ -575,7 +575,7 @@ def test_the_committed_schemas_accept_what_kr_core_writes():
 
 def test_a_pack_file_that_cannot_be_read_is_a_clear_error(tmp_path, capsys):
     """UTF-8 이 아니거나 폴더인 pack.yaml 은 traceback 이 아니라 오류 한 줄이다."""
-    from policypack.cli import main
+    from policyofficer.cli import main
 
     (tmp_path / "pack.yaml").write_bytes("# 한국어\n".encode("euc-kr") + MINIMAL.encode())
     assert main(["validate", str(tmp_path)]) == 2
@@ -590,7 +590,7 @@ def test_doctor_fails_when_the_default_pack_is_broken(tmp_path, monkeypatch, cap
     """기본 팩을 읽지 못하면 scan·test 가 모두 실패한다. doctor 가 먼저 알린다."""
     import json
 
-    from policypack.cli import main
+    from policyofficer.cli import main
 
     monkeypatch.setenv("POLICYPACK_PACK", str(tmp_path / "missing"))
     assert main(["doctor", "--json"]) == 2
@@ -603,7 +603,7 @@ def test_validate_warns_about_statute_texts_it_cannot_use(tmp_path, capsys):
     import hashlib
     import shutil
 
-    from policypack.cli import main
+    from policyofficer.cli import main
 
     copy = tmp_path / "kr-core"
     shutil.copytree(KR_CORE, copy, ignore=shutil.ignore_patterns("tests"))
@@ -619,7 +619,7 @@ def test_validate_warns_about_statute_texts_it_cannot_use(tmp_path, capsys):
 
 
 def test_doctor_fails_on_a_bad_timeout_setting(monkeypatch, capsys):
-    from policypack.cli import main
+    from policyofficer.cli import main
 
     monkeypatch.setenv("POLICYPACK_SEMGREP_TIMEOUT", "abc")
     assert main(["doctor"]) == 2

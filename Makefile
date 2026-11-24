@@ -5,10 +5,10 @@ sync:
 
 test:                       ## 모델 호출 0회로 전부 돈다
 	uv run pytest
-	uv run policypack test --strict
+	uv run policyofficer test --strict
 
 pack-test:                  ## 정책 팩 픽스처. 대안마다 혼자 푸는 픽스처·정적 대안마다 음성 픽스처가 없으면 실패
-	uv run policypack test --strict
+	uv run policyofficer test --strict
 
 lint:
 	uv run ruff check .
@@ -19,10 +19,10 @@ fmt:
 	uv run ruff check --fix .
 
 schema:                     ## pydantic 모델에서 JSON Schema 를 다시 만든다(모델에 없는 옛 파일은 지운다)
-	uv run policypack schema --write
+	uv run policyofficer schema --write
 
 schema-check:               ## 커밋된 schemas/ 와 모델이 어긋나거나 모델에 없는 파일이 있으면 실패
-	uv run policypack schema --check
+	uv run policyofficer schema --check
 
 clean:
 	rm -rf .pytest_cache .ruff_cache dist build

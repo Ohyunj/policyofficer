@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "policypack hook claude-code",
+            "command": "policyofficer hook claude-code",
             "timeout": 60
           }
         ]

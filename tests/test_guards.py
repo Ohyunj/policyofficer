@@ -13,8 +13,8 @@ from pathlib import Path
 
 import pytest
 
-from policypack.cli import main
-from policypack.pack.loader import load_pack
+from policyofficer.cli import main
+from policyofficer.pack.loader import load_pack
 
 REPO = Path(__file__).resolve().parents[1]
 
@@ -40,7 +40,7 @@ def test_no_suppression_comments_in_our_own_data(root):
         str(p.relative_to(REPO))
         for p in (REPO / root).rglob("*")
         if p.is_file() and p.suffix in {".js", ".jsx", ".ts", ".tsx", ".yaml"}
-        for token in ("nosemgrep", "policypack-ignore")
+        for token in ("nosemgrep", "policyofficer-ignore")
         if token in p.read_text(encoding="utf-8", errors="replace")
     ]
     assert hits == []
@@ -48,7 +48,7 @@ def test_no_suppression_comments_in_our_own_data(root):
 
 def test_ai_alternatives_must_cite(tmp_path):
     """인용 없는 '예' 하나가 경고를 내리면 방향성 신뢰가 깨진다. AI 대안의 evidence 는 required·strict 뿐이다."""
-    from policypack.errors import PackError
+    from policyofficer.errors import PackError
 
     src = (REPO / "policies/kr-core/pack.yaml").read_text(encoding="utf-8")
     (tmp_path / "pack.yaml").write_text(src.replace("evidence: required", "evidence: optional", 1), encoding="utf-8")
@@ -58,7 +58,7 @@ def test_ai_alternatives_must_cite(tmp_path):
 
 def test_ai_predicates_are_refused_in_applies_when(tmp_path):
     """applies-when 의 AI 조건은 묻지 않고 거짓이 되어 규칙을 끈다. 문법이 막는다."""
-    from policypack.errors import PackError
+    from policyofficer.errors import PackError
 
     src = (REPO / "policies/kr-core/pack.yaml").read_text(encoding="utf-8")
     src = src.replace(
@@ -85,11 +85,11 @@ def test_weak_evidence_cannot_clear_without_a_judge(tmp_path, monkeypatch, capsy
 def test_strict_evidence_refuses_a_citation_that_carries_a_comment(tmp_path):
     """'이 문구가 코드에 있는가'를 묻는 조건. required 는 줄 끝 주석이 달린 코드 줄의 인용을 코드 부분으로
     받는다. strict 는 주석이 닿은 인용을 받지 않는다."""
-    from policypack.evaluate.engine import Target, evaluate
-    from policypack.judge.fake import FakeJudge
-    from policypack.model import Evidence
-    from policypack.static.compile import compile_static
-    from policypack.static.semgrep_cli import SemgrepBackend
+    from policyofficer.evaluate.engine import Target, evaluate
+    from policyofficer.judge.fake import FakeJudge
+    from policyofficer.model import Evidence
+    from policyofficer.static.compile import compile_static
+    from policyofficer.static.semgrep_cli import SemgrepBackend
 
     line = "await gateway.enforceQuietHours(); // 야간 발송 차단"
     f = tmp_path / "blast.ts"
@@ -187,7 +187,7 @@ def test_scan_never_enables_telemetry_or_version_check(monkeypatch):
     플래그가 없으면 판본 확인을 하러 나간다(실측)."""
     import subprocess
 
-    from policypack.static.semgrep_cli import SemgrepBackend, _env
+    from policyofficer.static.semgrep_cli import SemgrepBackend, _env
 
     env = _env(Path("/x/bin/semgrep"))
     assert env["SEMGREP_SEND_METRICS"] == "off"
@@ -209,7 +209,7 @@ def test_scan_never_enables_telemetry_or_version_check(monkeypatch):
 def test_engine_is_pinned_to_the_executable_we_chose():
     """semgrep 진입점은 실제 구현을 PATH 에서도 찾는다. 이 머신에는 Homebrew 판이 함께 있어서,
     PATH 를 고정하지 않으면 venv 의 판본을 절대경로로 불러도 다른 엔진이 돌았다(실측)."""
-    from policypack.static.semgrep_cli import _env, resolve
+    from policyofficer.static.semgrep_cli import _env, resolve
 
     path, _, _ = resolve()
     assert path is not None
@@ -218,8 +218,8 @@ def test_engine_is_pinned_to_the_executable_we_chose():
 
 def test_recorded_engine_version_comes_from_the_run(tmp_path):
     """--version 을 따로 묻지 않고, 그 실행이 스스로 밝힌 판본을 적는다."""
-    from policypack.static.compile import compile_static
-    from policypack.static.semgrep_cli import EXPECTED_VERSION, SemgrepBackend
+    from policyofficer.static.compile import compile_static
+    from policyofficer.static.semgrep_cli import EXPECTED_VERSION, SemgrepBackend
 
     f = tmp_path / "a.js"
     f.write_text("const x = 1;\n", encoding="utf-8")
@@ -231,8 +231,8 @@ def test_scan_has_a_time_limit(monkeypatch, tmp_path):
     """시간 제한이 없으면 semgrep 이 멈출 때 커밋 훅과 CI 가 함께 멈춘다."""
     import subprocess
 
-    from policypack.errors import BackendError
-    from policypack.static.semgrep_cli import SemgrepBackend
+    from policyofficer.errors import BackendError
+    from policyofficer.static.semgrep_cli import SemgrepBackend
 
     backend = SemgrepBackend()
     assert backend.timeout > 0

@@ -13,13 +13,13 @@ from pathlib import Path
 
 import pytest
 
-from policypack.evaluate.engine import Target, evaluate
-from policypack.judge.fake import FakeJudge
-from policypack.pack.loader import load_pack
-from policypack.report import json_out
-from policypack.static.backend import StaticResult
-from policypack.static.compile import compile_static
-from policypack.static.semgrep_cli import SemgrepBackend
+from policyofficer.evaluate.engine import Target, evaluate
+from policyofficer.judge.fake import FakeJudge
+from policyofficer.pack.loader import load_pack
+from policyofficer.report import json_out
+from policyofficer.static.backend import StaticResult
+from policyofficer.static.compile import compile_static
+from policyofficer.static.semgrep_cli import SemgrepBackend
 
 jsonschema = pytest.importorskip("jsonschema")
 
@@ -90,10 +90,10 @@ def _reply(app: Path):
 
 @pytest.mark.parametrize("mode", ["review", "combined", "independent", "offline"])
 def test_agent_reports_match(tmp_path, monkeypatch, capsys, mode):
-    import policypack.judge.agent as agent_mod
-    from policypack.cli import main
-    from policypack.judge.agent import AgentJudge
-    from policypack.judge.http import Unavailable
+    import policyofficer.judge.agent as agent_mod
+    from policyofficer.cli import main
+    from policyofficer.judge.agent import AgentJudge
+    from policyofficer.judge.http import Unavailable
 
     app = tmp_path / "app"
     app.mkdir()
@@ -127,7 +127,7 @@ def test_agent_reports_match(tmp_path, monkeypatch, capsys, mode):
 
 def test_findings_carry_the_file_role(tmp_path, monkeypatch, capsys):
     """시험 파일의 발견도 그대로 내되 역할을 싣고, 글 출력은 그 발견을 뒤에 따로 묶는다(웹 시연, 11/11)."""
-    from policypack.cli import main
+    from policyofficer.cli import main
 
     monkeypatch.chdir(tmp_path)  # git 저장소가 아니면 실행 위치가 검사 루트다
     for name in ("src/signup.ts", "tests/signup.test.ts"):
@@ -150,8 +150,8 @@ def test_findings_carry_the_file_role(tmp_path, monkeypatch, capsys):
 def test_the_judge_is_not_asked_about_test_files(tmp_path, monkeypatch, capsys):
     """시험·픽스처 파일의 경고는 판정자에게 묻지 않는다(판정자가 없을 때처럼 남고 까닭은 test-file). 정책 팩 픽스처가
     많은 저장소에서 질문이 수백 개로 늘어 웹 실행기의 검사가 12분 걸렸다(11/11)."""
-    import policypack.judge.anthropic_api as api
-    from policypack.cli import main
+    import policyofficer.judge.anthropic_api as api
+    from policyofficer.cli import main
 
     asked = []
 

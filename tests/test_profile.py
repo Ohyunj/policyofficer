@@ -1,11 +1,11 @@
-"""저장소 프로필(policypack profile): 기능 알아보기와 기능–의무 표. 모델 호출 0회."""
+"""저장소 프로필(policyofficer profile): 기능 알아보기와 기능–의무 표. 모델 호출 0회."""
 
 from __future__ import annotations
 
 import json
 
-from policypack.cli import main
-from policypack.profile import load_duties, load_features, package_of, path_words, profile
+from policyofficer.cli import main
+from policyofficer.profile import load_duties, load_features, package_of, path_words, profile
 
 
 def test_path_words_split_names_and_join_neighbours():

@@ -7,13 +7,13 @@ from pathlib import Path
 
 import pytest
 
-import policypack.evaluate.agent_pass as agent_pass
-from policypack.egress import is_secret_file, mask
-from policypack.evaluate.agent_pass import gate, run_agent_pass, run_independent
-from policypack.evaluate.engine import EvalResult
-from policypack.judge.agent import AgentJudge, AgentQuestion, Entry, RepoTools, build, parse
-from policypack.pack.loader import load_duties, load_pack
-from policypack.report.outcome import Finding, Outcome
+import policyofficer.evaluate.agent_pass as agent_pass
+from policyofficer.egress import is_secret_file, mask
+from policyofficer.evaluate.agent_pass import gate, run_agent_pass, run_independent
+from policyofficer.evaluate.engine import EvalResult
+from policyofficer.judge.agent import AgentJudge, AgentQuestion, Entry, RepoTools, build, parse
+from policyofficer.pack.loader import load_duties, load_pack
+from policyofficer.report.outcome import Finding, Outcome
 
 REPO = Path(__file__).resolve().parents[1]
 KR_CORE = REPO / "policies" / "kr-core"
@@ -224,7 +224,7 @@ def test_parse_failure_and_transport_failure(repo):
 
 def test_agent_stops_asking_once_the_service_is_unreachable(repo):
     """연달아 두 질문이 서비스에 닿지 못하면 남은 질문은 보내지 않는다. 그 요청만 거절된 것(400)은 세지 않는다."""
-    from policypack.judge.http import Unavailable
+    from policyofficer.judge.http import Unavailable
 
     tries = []
 
@@ -512,8 +512,8 @@ def test_scan_with_agent_adds_records_and_none_stays_plain(tmp_path, monkeypatch
     """--agent 를 주면 run.agent 와 findings[].agent 가 붙는다. 주지 않으면 보고서에 agent 키가 없다."""
     import shutil
 
-    import policypack.judge.agent as agent_mod
-    from policypack.cli import main
+    import policyofficer.judge.agent as agent_mod
+    from policyofficer.cli import main
 
     target = tmp_path / "app"
     target.mkdir()
@@ -579,8 +579,8 @@ def test_scan_with_agent_adds_records_and_none_stays_plain(tmp_path, monkeypatch
 def test_time_limit_flag_keeps_the_static_result(tmp_path, monkeypatch, capsys):
     import shutil
 
-    import policypack.judge.agent as agent_mod
-    from policypack.cli import main
+    import policyofficer.judge.agent as agent_mod
+    from policyofficer.cli import main
 
     target = tmp_path / "app"
     target.mkdir()
@@ -613,9 +613,9 @@ def test_an_unreachable_agent_leaves_the_static_result(tmp_path, monkeypatch, ca
     본 것이 없다 — 경고가 없어도 '검토할 것 없음'(0)으로 끝내지 않는다."""
     import shutil
 
-    import policypack.judge.agent as agent_mod
-    from policypack.cli import main
-    from policypack.judge.http import Unavailable
+    import policyofficer.judge.agent as agent_mod
+    from policyofficer.cli import main
+    from policyofficer.judge.http import Unavailable
 
     target = tmp_path / "app"
     target.mkdir()
@@ -650,7 +650,7 @@ def test_an_unreachable_agent_leaves_the_static_result(tmp_path, monkeypatch, ca
 
 
 def test_text_and_sarif_show_agent_results(repo):
-    from policypack.report import sarif, text
+    from policyofficer.report import sarif, text
 
     send = scripted(
         answer(
@@ -704,8 +704,8 @@ def test_text_and_sarif_show_agent_results(repo):
 def test_recheck_model_flag(tmp_path, monkeypatch, capsys):
     import shutil
 
-    import policypack.judge.agent as agent_mod
-    from policypack.cli import main
+    import policyofficer.judge.agent as agent_mod
+    from policyofficer.cli import main
 
     target = tmp_path / "app"
     target.mkdir()

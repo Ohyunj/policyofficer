@@ -9,7 +9,7 @@ import itertools
 
 import pytest
 
-from policypack.evaluate.kleene import FALSE, TRUE, UNKNOWN, Tri, and3, clear_only, or3
+from policyofficer.evaluate.kleene import FALSE, TRUE, UNKNOWN, Tri, and3, clear_only, or3
 
 ALL = [TRUE, FALSE, UNKNOWN]
 

@@ -16,15 +16,15 @@ from pathlib import Path
 
 import pytest
 
-from policypack.evaluate.engine import Target, evaluate
-from policypack.evidence import is_grounded
-from policypack.judge.base import Answer
-from policypack.judge.fake import FakeJudge
-from policypack.pack.loader import load_pack
-from policypack.report.outcome import Outcome, UntestedReason
-from policypack.static.backend import PredicateKey, StaticResult
-from policypack.static.compile import compile_static
-from policypack.static.semgrep_cli import SemgrepBackend
+from policyofficer.evaluate.engine import Target, evaluate
+from policyofficer.evidence import is_grounded
+from policyofficer.judge.base import Answer
+from policyofficer.judge.fake import FakeJudge
+from policyofficer.pack.loader import load_pack
+from policyofficer.report.outcome import Outcome, UntestedReason
+from policyofficer.static.backend import PredicateKey, StaticResult
+from policyofficer.static.compile import compile_static
+from policyofficer.static.semgrep_cli import SemgrepBackend
 
 REPO = Path(__file__).resolve().parents[1]
 KR = REPO / "policies" / "kr-core"
@@ -147,7 +147,7 @@ def test_weak_evidence_that_was_not_confirmed_shows_in_the_trace(pack):
 
 def test_a_weak_alternative_without_an_ai_alternative_is_reported(pack):
     """AI 대안이 없는 규칙의 약한 대안은 어떤 판정자로도 확인되지 않는다. validate 가 알리고, 판정은 까닭을 단다."""
-    from policypack.pack.loader import find_unconfirmable_weak
+    from policyofficer.pack.loader import find_unconfirmable_weak
 
     assert find_unconfirmable_weak(pack) == []
     rules = []
@@ -198,7 +198,7 @@ def test_an_unusable_answer_counts_like_no_judge_but_says_why(pack):
 
 def test_a_clearance_on_a_line_with_a_trailing_comment_records_the_gate_class(pack, tmp_path):
     """AI 가 푼 경고는 인용과 관문이 본 분류를 남긴다. 관문이 받은 끝 주석 줄은 trailing-comment 로 적힌다."""
-    from policypack.report import json_out
+    from policyofficer.report import json_out
 
     line = "await gateway.enforceQuietHours(); // 야간 발송 차단"
     f = tmp_path / "blast.ts"
@@ -292,7 +292,7 @@ def test_a_unit_dropped_by_the_applicability_question_is_recorded(pack):
 
 def test_mts_and_cts_are_reported_as_unscanned(tmp_path):
     """고정한 Semgrep 은 .mts·.cts 를 TypeScript 로 읽지 않고 오류도 남기지 않는다. 검사한 것으로 세면 안 된다."""
-    from policypack.discover import discover
+    from policyofficer.discover import discover
 
     (tmp_path / "a.ts").write_text("export const a = 1;\n", encoding="utf-8")
     (tmp_path / "b.mts").write_text("export const b = 1;\n", encoding="utf-8")
@@ -308,7 +308,7 @@ def test_upper_case_extensions_are_reported_as_unscanned(tmp_path):
     """Semgrep 은 Mail.TS·a.Ts 를, 이름을 대도 오류 없이 건너뛴다(검토에서 실측). 이름을 댄 파일은 확장자를
     묻지 않고 엔진에 넘긴다(.sh 등). 같은 파일을 여러 경로로 만나도 건너뛴 파일은 한 번만 세고, 다른 경로로
     검사한 파일은 건너뛴 파일로 적지 않는다."""
-    from policypack.discover import discover
+    from policyofficer.discover import discover
 
     for name in ("a.ts", "Mail.TS", "b.Ts", "deploy.sh", "c.MTS", "app.min.js"):
         (tmp_path / name).write_text("export const a = 1;\n", encoding="utf-8")
@@ -323,8 +323,8 @@ def test_upper_case_extensions_are_reported_as_unscanned(tmp_path):
 
 
 def test_a_fixture_the_engine_cannot_read_is_rejected(tmp_path):
-    from policypack.errors import PackError
-    from policypack.packtest import load_test_file
+    from policyofficer.errors import PackError
+    from policyofficer.packtest import load_test_file
 
     (tmp_path / "v.mts").write_text("export const a = 1;\n", encoding="utf-8")
     suite = tmp_path / "t.test.yaml"
@@ -342,7 +342,7 @@ def test_a_fixture_the_engine_cannot_read_is_rejected(tmp_path):
 
 def test_a_bare_word_citation_cannot_clear():
     """관문은 인용이 코드에 있는지만 본다. 낱말 하나(`router`, `prisma`)로 경고가 풀렸다(끝까지 점검에서 실측)."""
-    from policypack.evidence import GateResult, classify
+    from policyofficer.evidence import GateResult, classify
 
     code = 'router.post("/signup", async (req, res) => {\n  await prisma.user.create({ data: req.body });\n});\n'
     for word in ("router", "prisma", "signup"):
@@ -355,7 +355,7 @@ def test_a_bare_word_citation_cannot_clear():
 
 def test_a_quote_from_a_trailing_comment_is_labelled_comment_only():
     """코드 줄 끝 주석의 글만 인용했으면 주석 인용이다. trailing-comment 는 코드 줄을 통째로 인용한 경우다."""
-    from policypack.evidence import GateResult, classify
+    from policyofficer.evidence import GateResult, classify
 
     code = 'import { V } from "@/lib/terms"; // 약관 제7조: 생성형 인공지능 기반\n'
     assert classify("약관 제7조: 생성형 인공지능 기반", code) is GateResult.COMMENT_ONLY
@@ -377,7 +377,7 @@ def test_an_unusable_applies_answer_is_reported(pack):
 def test_files_that_are_not_utf8_are_reported_as_unscanned(tmp_path):
     """Semgrep 1.176.1 의 정규식 조건은 UTF-8 이 아닌 파일에서 오류 없이 아무것도 찾지 않는다. kr-core 의 적용
     조건은 모두 정규식이라 그런 파일이 '문제 없음'이 됐다. 폴더로 만나든 이름을 대든 검사한 것으로 세지 않는다."""
-    from policypack.discover import admit, discover
+    from policyofficer.discover import admit, discover
 
     (tmp_path / "a.ts").write_text("export const a = 1;\n", encoding="utf-8")
     (tmp_path / "euckr.ts").write_bytes("// 가입 처리\nexport const b = 1;\n".encode("euc-kr"))
@@ -392,7 +392,7 @@ def test_files_that_are_not_utf8_are_reported_as_unscanned(tmp_path):
 
 def test_a_non_utf8_violation_is_not_reported_clean(tmp_path, monkeypatch, capsys):
     """위반 픽스처 앞에 Latin-1 한 바이트짜리 주석만 붙여도 exit 0 '검토할 것 없음'이었다(실측)."""
-    from policypack.cli import main
+    from policyofficer.cli import main
 
     src = (KR / "tests/pipa-22-2/violating.ts").read_bytes()
     (tmp_path / "signup.ts").write_bytes(b"// caf\xe9\n" + src)
@@ -407,7 +407,7 @@ def test_a_non_utf8_violation_is_not_reported_clean(tmp_path, monkeypatch, capsy
 
 def test_skipped_files_carry_every_reason_in_reports(tmp_path, monkeypatch, capsys):
     """건너뛴 까닭 목록을 보고서마다 따로 적어서, UTF-8 을 더할 때 글·SARIF 가 옛 목록을 적었다(검토에서 실측)."""
-    from policypack.cli import main
+    from policyofficer.cli import main
 
     (tmp_path / "ok.ts").write_text("export const a = 1;\n", encoding="utf-8")
     (tmp_path / "latin1.ts").write_bytes(b"// caf\xe9\nexport const c = 1;\n")
@@ -423,7 +423,7 @@ def test_a_named_unreadable_file_does_not_abort_the_scan(tmp_path):
     """이름을 댄 파일도 읽을 권한을 본다. semgrep 은 읽을 수 없는 대상이 하나라도 있으면 출력 없이 끝났다."""
     import os
 
-    from policypack.discover import discover
+    from policyofficer.discover import discover
 
     ok, locked = tmp_path / "ok.ts", tmp_path / "locked.ts"
     for f in (ok, locked):
@@ -440,8 +440,8 @@ def test_a_named_unreadable_file_does_not_abort_the_scan(tmp_path):
 
 
 def test_a_fixture_that_is_not_utf8_is_rejected(tmp_path):
-    from policypack.errors import PackError
-    from policypack.packtest import load_test_file
+    from policyofficer.errors import PackError
+    from policyofficer.packtest import load_test_file
 
     (tmp_path / "v.ts").write_bytes(b"// caf\xe9\nexport const a = 1;\n")
     suite = tmp_path / "t.test.yaml"
@@ -456,7 +456,7 @@ def test_a_fixture_that_is_not_utf8_is_rejected(tmp_path):
 
 def test_every_language_glob_is_really_read_by_the_pinned_engine(tmp_path):
     """LANGUAGE_GLOBS 의 확장자마다 언어 규칙이 실제로 매치해야 한다. 안 읽는 확장자를 넣으면 조용히 '거짓'이 된다."""
-    from policypack.static.compile import LANGUAGE_GLOBS
+    from policyofficer.static.compile import LANGUAGE_GLOBS
 
     files = []
     for lang in ("javascript", "typescript"):
@@ -472,7 +472,7 @@ def test_every_language_glob_is_really_read_by_the_pinned_engine(tmp_path):
                 "severity": "INFO",
                 "message": "x",
                 "pattern": "markerCall(...)",
-                "metadata": {"policypack": {"policy": "p", "rule": "r", "group": "applies-when", "predicate": "q"}},
+                "metadata": {"policyofficer": {"policy": "p", "rule": "r", "group": "applies-when", "predicate": "q"}},
             }
         ]
     }
@@ -487,7 +487,7 @@ def test_every_language_glob_is_really_read_by_the_pinned_engine(tmp_path):
 def test_same_id_in_applies_when_and_alternatives_fails_at_load(pack):
     from pydantic import ValidationError
 
-    from policypack.model import Rule
+    from policyofficer.model import Rule
 
     rule = next(r for _, r in pack.iter_rules() if r.id == "signup-without-guard")
     clash = rule.compliant_if_any[0].model_copy(update={"id": rule.applies_when[0].id})
@@ -501,7 +501,7 @@ def test_same_id_in_applies_when_and_alternatives_fails_at_load(pack):
 
 
 def test_json_and_text_report_the_ai_turn(tmp_path, monkeypatch, capsys):
-    from policypack.cli import main
+    from policyofficer.cli import main
 
     src = (FIX / "pipa-22-2" / "ai-guard.ts").read_text(encoding="utf-8")
     (tmp_path / "a.ts").write_text(src, encoding="utf-8")

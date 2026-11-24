@@ -2,7 +2,7 @@
 #
 # 조문 추적성
 #   text-file 은 국가법령정보 공동활용 API 로 받은 조문 원문이고, text-sha256 은 그 파일의 해시다.
-#   원문 파일이 적어 둔 해시와 달라지면 `policypack validate` 가 경고한다. 법이 개정됐는지는 원문을 다시
+#   원문 파일이 적어 둔 해시와 달라지면 `policyofficer validate` 가 경고한다. 법이 개정됐는지는 원문을 다시
 #   받아야 안다. 받는 도구는 지금 저장소에 없고 태그 archive/research-2026-09-29 의 src/policypack/legal.py
 #   에 있다. 파일 모양은 첫 줄 '<법령명> <조문>(<제목>)', 둘째 줄 '시행 YYYY-MM-DD', 빈 줄, 조문이다.
 #   해시로 고정되는 것은 violated-when-failed 목록뿐이다. 그래서 규칙의 모양을 정하는

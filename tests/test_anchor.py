@@ -20,14 +20,14 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from policypack.evaluate.engine import Target, Unit, evaluate
-from policypack.judge.fake import FakeJudge
-from policypack.model import Rule
-from policypack.pack.loader import find_anchor_without_regions, load_pack
-from policypack.static.backend import Pos, PredicateKey, Span, StaticResult
-from policypack.static.compile import compile_static
-from policypack.static.parse import parse_semgrep_json
-from policypack.static.semgrep_cli import SemgrepBackend
+from policyofficer.evaluate.engine import Target, Unit, evaluate
+from policyofficer.judge.fake import FakeJudge
+from policyofficer.model import Rule
+from policyofficer.pack.loader import find_anchor_without_regions, load_pack
+from policyofficer.static.backend import Pos, PredicateKey, Span, StaticResult
+from policyofficer.static.compile import compile_static
+from policyofficer.static.parse import parse_semgrep_json
+from policyofficer.static.semgrep_cli import SemgrepBackend
 
 REPO = Path(__file__).resolve().parents[1]
 KR_CORE = REPO / "policies" / "kr-core"
@@ -116,8 +116,8 @@ def test_languages_without_function_boundaries_are_surfaced(kr):
 
 def test_file_scope_compiles_no_region_rules(kr):
     """함수 경계 규칙이 붙으면 semgrep 설정과 시간 초과 계산이 바뀐다. file 팩에는 없어야 한다."""
-    assert not any(r["id"].startswith("policypack-region") for r in compile_static(kr)["rules"])
-    assert any(r["id"].startswith("policypack-region") for r in compile_static(anchored(kr))["rules"])
+    assert not any(r["id"].startswith("policyofficer-region") for r in compile_static(kr)["rules"])
+    assert any(r["id"].startswith("policyofficer-region") for r in compile_static(anchored(kr))["rules"])
 
 
 # ── 함수 경계는 필요한 파일에서만 구한다 ────────────────────────────────────
@@ -140,13 +140,13 @@ def test_function_boundaries_are_computed_only_where_a_function_rule_can_apply()
 
 
 def test_choosing_files_for_function_boundaries():
-    from policypack.static.backend import Match
-    from policypack.static.semgrep_cli import region_targets
+    from policyofficer.static.backend import Match
+    from policyofficer.static.semgrep_cli import region_targets
 
     def rule(pred, role=None, generic=False):
         meta = {"policy": "p", "rule": "r", "group": "applies-when", "predicate": pred}
         extra = {**({"anchor": role} if role else {}), **({"generic": True} if generic else {})}
-        return {"id": f"p.r.{pred}" + (".generic" if generic else ""), "metadata": {"policypack": {**meta, **extra}}}
+        return {"id": f"p.r.{pred}" + (".generic" if generic else ""), "metadata": {"policyofficer": {**meta, **extra}}}
 
     on, wth = PredicateKey("p", "r", "applies-when", "send"), PredicateKey("p", "r", "applies-when", "ad")
     span = Span(Pos(1, 1, 0), Pos(1, 5, 4))
@@ -199,8 +199,8 @@ def test_boundaries_are_chosen_exactly_where_the_evaluator_builds_function_units
     """손으로 적은 목록은 고르는 기준이 평가기와 어긋나도 모른다(검토에서 실측: 끝내지 못한 파일을 빼던 기준이
     그 목록에 그대로 적혀 있었다). 기대값을 평가기에서 끌어낸다 — 판정 위치가 있는 단위가 생기는 파일이 곧
     함수 경계가 필요한 파일이다. 다른 적용 조건이 구문 조건일 때, 정규식 조건일 때, 없을 때를 다 본다."""
-    from policypack.static.backend import Match
-    from policypack.static.semgrep_cli import region_targets
+    from policyofficer.static.backend import Match
+    from policyofficer.static.semgrep_cli import region_targets
 
     (tmp_path / "pack.yaml").write_text(SELECTION_PACK % SELECTION_WITH[kind], encoding="utf-8")
     pack = load_pack(tmp_path)
@@ -240,7 +240,7 @@ def _fail_the_boundary_run(monkeypatch, kind: str) -> None:
 
     def raw(self, config, targets):
         data, elapsed = real(self, config, targets)
-        if not all(r["id"].startswith("policypack-region") for r in config["rules"]):
+        if not all(r["id"].startswith("policyofficer-region") for r in config["rules"]):
             return data, elapsed
         rid = "var.folders.x.T." + config["rules"][0]["id"]
         located = {"level": "warn", "rule_id": rid, "path": str(targets[0]), "message": "m"}
@@ -432,7 +432,7 @@ def test_boundaries_that_came_back_are_used_even_when_the_boundary_run_reported_
 
     def raw(self, config, targets):
         data, elapsed = real(self, config, targets)
-        if all(r["id"].startswith("policypack-region") for r in config["rules"]):
+        if all(r["id"].startswith("policyofficer-region") for r in config["rules"]):
             data.setdefault("errors", []).append({"type": "Fatal error", "level": "error", "message": "boom"})
         return data, elapsed
 
@@ -448,7 +448,7 @@ def test_boundaries_that_came_back_are_used_even_when_the_boundary_run_reported_
 
 def test_boundaries_where_needed_give_the_same_verdicts_as_boundaries_everywhere(monkeypatch, kr):
     """두 번에 나눠 돌려도 판정은 같다. 모든 파일에서 경계를 구하던 방식과 견준다."""
-    import policypack.static.semgrep_cli as cli_backend
+    import policyofficer.static.semgrep_cli as cli_backend
 
     pack = anchored(kr)
     files = sorted(PROBES.iterdir()) + sorted((KR_CORE / "tests" / "network-act-50-3").iterdir())
@@ -511,7 +511,7 @@ def test_ai_citation_outside_the_region_cannot_clear(tmp_path, kr):
         id = "stub"
 
         def ask(self, q):
-            from policypack.judge.base import Answer
+            from policyofficer.judge.base import Answer
 
             return Answer(raw="예", evidence="if (h >= 21 || h < 8) { return; }")
 
@@ -633,7 +633,7 @@ class SeesOnlyThePrompt:
         self.asked = []
 
     def ask(self, q):
-        from policypack.judge.base import Answer
+        from policyofficer.judge.base import Answer
 
         self.asked.append(q)
         seen = q.prompt()
@@ -722,7 +722,7 @@ def test_the_seeing_judge_can_clear_a_real_guard(tmp_path, kr):
 def test_anchors_outside_every_function_send_the_whole_file_and_the_notice_says_so(tmp_path, kr):
     """앵커가 모두 함수 밖이면 구역이 파일 전체다(file 이 내는 단위를 anchor 가 없애지 않으려고).
     그러면 함수 본문도 간다. 고지가 이 경우를 말해야 한다."""
-    from policypack.cli import _egress_notice
+    from policyofficer.cli import _egress_notice
 
     src = (
         'import { sms } from "./sms";\n\n'
@@ -748,8 +748,8 @@ def test_anchors_outside_every_function_send_the_whole_file_and_the_notice_says_
 
 
 def _header(src: str, first: int, last: int) -> str:
-    from policypack.evaluate.engine import file_header
-    from policypack.evidence import strip_comments
+    from policyofficer.evaluate.engine import file_header
+    from policyofficer.evidence import strip_comments
 
     raw = src.split("\n")
     region = Span(Pos(first, 1, 0), Pos(last, 1, 0))
@@ -898,7 +898,7 @@ def test_region_slice_on_crlf_files(tmp_path, kr):
 
 
 def test_region_rule_timeout_does_not_distrust_the_file():
-    err = {"type": "Timeout", "rule_id": "policypack-region.typescript", "path": "/t/a.ts", "level": "warn"}
+    err = {"type": "Timeout", "rule_id": "policyofficer-region.typescript", "path": "/t/a.ts", "level": "warn"}
     res = parse_semgrep_json({"results": [], "errors": [err]})
     assert res.hard_unparsed == set()
 
@@ -914,7 +914,7 @@ def test_regions_merge_across_chunks():
 
 
 def test_sarif_points_at_the_anchor_and_carries_the_region(probes, kr):
-    from policypack.report import sarif
+    from policyofficer.report import sarif
 
     doc = sarif.build(probes["anchor"], anchored(kr), KR_CORE, PROBES)
     res = next(
@@ -930,7 +930,7 @@ def test_sarif_points_at_the_anchor_and_carries_the_region(probes, kr):
 
 
 def test_file_findings_keep_their_sarif_shape(probes, kr):
-    from policypack.report import sarif
+    from policyofficer.report import sarif
 
     res = sarif.build(probes["file"], kr, KR_CORE, PROBES)["runs"][0]["results"]
     assert res
@@ -940,8 +940,8 @@ def test_file_findings_keep_their_sarif_shape(probes, kr):
 
 def test_fingerprints_are_distinct_and_order_independent(tmp_path):
     """같은 조각의 판정 둘이 같은 지문이면 코드 스캐닝이 하나로 합친다."""
-    from policypack.report.fingerprint import fingerprints
-    from policypack.report.outcome import Finding, Outcome
+    from policyofficer.report.fingerprint import fingerprints
+    from policyofficer.report.outcome import Finding, Outcome
 
     f = tmp_path / "a.ts"
     f.write_text("x\n" * 3, encoding="utf-8")
@@ -958,7 +958,7 @@ def test_fingerprints_are_distinct_and_order_independent(tmp_path):
 
 
 def test_json_carries_scope_and_region(probes):
-    from policypack.report import json_out
+    from policyofficer.report import json_out
 
     doc = json.loads(json_out.dumps(probes["anchor"], PROBES))
     night = next(f for f in doc["findings"] if f["file"] == "ads-mixed.tsx")
@@ -1039,7 +1039,7 @@ def test_a_static_clearance_lists_only_the_matches_of_its_own_zone(tmp_path, kr)
 
 
 def test_one_line_function_has_no_context_region(tmp_path, kr):
-    from policypack.report import sarif
+    from policyofficer.report import sarif
 
     f = _one(tmp_path, "one.ts", 'export const blast = (u) => sms.send({ to: u.phone, text: "(광고) 특가" });\n')
     pack = anchored(kr)

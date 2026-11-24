@@ -16,14 +16,14 @@ from pathlib import Path
 
 import pytest
 
-from policypack import cli
-from policypack import review as rv
-from policypack.judge.agent import AgentJudge
-from policypack.judge.fake import review_transport
-from policypack.report import progress
-from policypack.report.review_text import render
-from policypack.review import events as E
-from policypack.review.prompts import STATUS_LABEL
+from policyofficer import cli
+from policyofficer import review as rv
+from policyofficer.judge.agent import AgentJudge
+from policyofficer.judge.fake import review_transport
+from policyofficer.report import progress
+from policyofficer.report.review_text import render
+from policyofficer.review import events as E
+from policyofficer.review.prompts import STATUS_LABEL
 
 FILES = {
     "package.json": json.dumps({"dependencies": {"express": "^4.0.0"}}),
@@ -290,7 +290,7 @@ def test_a_terminal_stdout_gets_a_summary_and_the_json_goes_to_the_cache(tmp_pat
     root = _repo(tmp_path)
     assert cli.main(["review", str(root), "--no-static", "--no-rebut"]) == 0
     out = SGR.sub("", sys.stdout.getvalue())  # 터미널이면 색이 있다
-    files = list((tmp_path / "cache" / "policypack" / "reviews").glob("repo-*.json"))
+    files = list((tmp_path / "cache" / "policyofficer" / "reviews").glob("repo-*.json"))
     assert len(files) == 1  # 분석하는 저장소에는 파일을 만들지 않는다
     assert sorted(p.relative_to(root).as_posix() for p in root.rglob("*") if p.is_file()) == sorted(FILES)
     doc = json.loads(files[0].read_text(encoding="utf-8"))

@@ -19,11 +19,11 @@ from pathlib import Path
 
 import pytest
 
-from policypack.static.backend import PredicateKey
-from policypack.static.parse import parse_semgrep_json
+from policyofficer.static.backend import PredicateKey
+from policyofficer.static.parse import parse_semgrep_json
 
 META = {
-    "policypack": {
+    "policyofficer": {
         "policy": "kr.pipa.22-2",
         "rule": "signup-without-guard",
         "group": "applies-when",
@@ -122,7 +122,7 @@ def test_line_range_survives_even_though_lines_are_hidden():
 
 
 def test_match_without_our_metadata_is_flagged():
-    """policypack 메타데이터가 없는 매치는 컴파일 쪽 버그다. 조용히 넘기지 않는다."""
+    """policyofficer 메타데이터가 없는 매치는 컴파일 쪽 버그다. 조용히 넘기지 않는다."""
     bad = _result()
     bad["extra"]["metadata"] = {}
     res = parse_semgrep_json({"results": [bad], "errors": []})
@@ -157,7 +157,7 @@ def test_pack_rule_timeout_distrusts_the_file():
 def test_timeouts_at_the_threshold_distrust_the_file():
     """시간 초과가 세 번 나면 semgrep 이 그 파일의 언어 규칙 결과를 오류 없이 전부 버린다(실측). 함수 경계 규칙의
     시간 초과는 하나로는 파일을 믿지 않을 까닭이 아니지만, 문턱에 닿으면 정책 조건의 결과도 사라진다."""
-    errs = [_timeout("policypack-region.typescript")] * 3
+    errs = [_timeout("policyofficer-region.typescript")] * 3
     res = parse_semgrep_json({"results": [], "errors": errs})
     assert res.hard_unparsed == {Path("/t/messages.js")}
 
@@ -168,16 +168,16 @@ KINDS_CONFIG = {
     "rules": [
         {
             "id": "kr.p.r.pred",
-            "metadata": {"policypack": {"policy": "kr.p", "rule": "r", "group": "g", "predicate": "p"}},
+            "metadata": {"policyofficer": {"policy": "kr.p", "rule": "r", "group": "g", "predicate": "p"}},
         },
-        {"id": "policypack-region.typescript", "metadata": {"policypack_region": {"lang": "typescript"}}},
+        {"id": "policyofficer-region.typescript", "metadata": {"policyofficer_region": {"lang": "typescript"}}},
     ]
 }
 PRED = PredicateKey("kr.p", "r", "g", "p")
 
 
 def _table():
-    from policypack.static.parse import rule_table
+    from policyofficer.static.parse import rule_table
 
     return rule_table(KINDS_CONFIG)
 
@@ -193,9 +193,9 @@ def test_a_prefixed_pack_timeout_resolves_to_its_predicate():
 
 def test_a_prefixed_region_timeout_resolves_to_its_id():
     res = parse_semgrep_json(
-        {"results": [], "errors": [_timeout("private.tmp.x.policypack-region.typescript")]}, _table()
+        {"results": [], "errors": [_timeout("private.tmp.x.policyofficer-region.typescript")]}, _table()
     )
-    assert res.rule_timeouts == {Path("/t/messages.js"): ["policypack-region.typescript"]}
+    assert res.rule_timeouts == {Path("/t/messages.js"): ["policyofficer-region.typescript"]}
     assert res.predicate_timeouts == {} and res.incomplete == set() and res.hard_unparsed == set()
 
 
@@ -205,7 +205,7 @@ def test_an_unknown_rule_timeout_leaves_the_whole_file_unfinished():
 
 
 def test_timeouts_at_the_threshold_leave_the_whole_file_unfinished():
-    errs = [_timeout("policypack-region.typescript")] * 3
+    errs = [_timeout("policyofficer-region.typescript")] * 3
     res = parse_semgrep_json({"results": [], "errors": errs}, _table())
     assert res.incomplete == {Path("/t/messages.js")}
 
@@ -217,7 +217,7 @@ def test_other_rule_level_errors_leave_their_predicate_unfinished(label):
     assert res.predicate_timeouts == {Path("/t/messages.js"): [PRED]} and res.rule_errors == []
 
 
-@pytest.mark.parametrize("rule_id", ["tmp.kr.p.r.pred", "private.tmp.x.policypack-region.typescript"])
+@pytest.mark.parametrize("rule_id", ["tmp.kr.p.r.pred", "private.tmp.x.policyofficer-region.typescript"])
 def test_too_many_matches_leaves_the_whole_file_unfinished(rule_id):
     """매치 상한을 넘으면 semgrep 은 그 파일의 매치를 모든 규칙에서 버리고 오류에는 규칙 하나만 적는다(실측,
     1.176.1). 그 규칙의 조건만 '모름'으로 두면 다른 정책이 그 파일에서 경고 없이 지나간다."""
@@ -230,8 +230,8 @@ def test_semgrep_prefixes_rule_ids_with_the_config_folder(tmp_path, monkeypatch)
     """되돌리기가 기대는 사실을 실제 semgrep 으로 확인한다: 규칙 id 앞에 설정 파일이 든 폴더 경로가 붙는다."""
     import tempfile
 
-    from policypack.static.parse import canonical_rule_id, rule_table
-    from policypack.static.semgrep_cli import SemgrepBackend
+    from policyofficer.static.parse import canonical_rule_id, rule_table
+    from policyofficer.static.semgrep_cli import SemgrepBackend
 
     tmp = tmp_path / "cfg"
     tmp.mkdir()
@@ -246,7 +246,7 @@ def test_semgrep_prefixes_rule_ids_with_the_config_folder(tmp_path, monkeypatch)
                 "severity": "INFO",
                 "message": "m",
                 "pattern": "send(...)",
-                "metadata": {"policypack": {"policy": "kr.p", "rule": "r", "group": "g", "predicate": "p"}},
+                "metadata": {"policyofficer": {"policy": "kr.p", "rule": "r", "group": "g", "predicate": "p"}},
             }
         ]
     }
@@ -259,14 +259,14 @@ def test_semgrep_prefixes_rule_ids_with_the_config_folder(tmp_path, monkeypatch)
 
 def test_rule_ids_that_end_with_another_id_are_refused():
     """한 id 가 다른 id 의 점 경계 접미사면, 임시 폴더 이름에 따라 어느 규칙의 시간 초과인지 가를 수 없다."""
-    from policypack.errors import PackError
-    from policypack.static.compile import check_rule_ids
+    from policyofficer.errors import PackError
+    from policyofficer.static.compile import check_rule_ids
 
     with pytest.raises(PackError, match="로 끝납니다"):
         check_rule_ids([{"id": "p.r.pred"}, {"id": "kr.p.r.pred"}])
     with pytest.raises(PackError, match="겹칩니다"):
         check_rule_ids([{"id": "a.b"}, {"id": "a.b"}])
-    check_rule_ids([{"id": "kr.p.r.pred"}, {"id": "kr.p.r.pred.generic"}, {"id": "policypack-region.typescript"}])
+    check_rule_ids([{"id": "kr.p.r.pred"}, {"id": "kr.p.r.pred.generic"}, {"id": "policyofficer-region.typescript"}])
 
 
 # ── 어느 파일인지 모르는 파일 단위 오류 ───────────────────────────────────────
@@ -295,7 +295,7 @@ def test_a_parse_error_without_a_path_keeps_its_kind_not_the_engines_quote_of_th
 def test_the_backend_leaves_every_target_of_a_run_with_an_unlocated_error_unfinished(monkeypatch, tmp_path):
     """버리면 그 실행의 어느 파일이든 '모름'이 조용히 '거짓'이 된다. 파싱 실패로 두면 정규식 조건은 여전히
     '거짓'이라 적용 조건이 정규식인 규칙이 흔적 없이 꺼졌다(검토에서 실측). 끝나지 않은 것으로 둔다."""
-    from policypack.static.semgrep_cli import SemgrepBackend
+    from policyofficer.static.semgrep_cli import SemgrepBackend
 
     a, b = tmp_path / "a.js", tmp_path / "b.js"
     backend = SemgrepBackend()
@@ -307,7 +307,7 @@ def test_the_backend_leaves_every_target_of_a_run_with_an_unlocated_error_unfini
 
 
 def test_chunked_runs_report_the_same_engine_version_and_count_runs(monkeypatch, tmp_path):
-    from policypack.static.semgrep_cli import SemgrepBackend
+    from policyofficer.static.semgrep_cli import SemgrepBackend
 
     files = [tmp_path / f"{i}.js" for i in range(3)]
     backend = SemgrepBackend()

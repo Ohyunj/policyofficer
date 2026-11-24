@@ -9,12 +9,12 @@ from pathlib import Path
 
 import pytest
 
-from policypack import cli, profile
-from policypack import review as rv
-from policypack.judge.agent import AgentJudge
-from policypack.judge.fake import review_transport
-from policypack.report import progress
-from policypack.report.review_text import SANCTION_NOTE, render
+from policyofficer import cli, profile
+from policyofficer import review as rv
+from policyofficer.judge.agent import AgentJudge
+from policyofficer.judge.fake import review_transport
+from policyofficer.report import progress
+from policyofficer.report.review_text import SANCTION_NOTE, render
 
 jsonschema = pytest.importorskip("jsonschema")
 SCHEMA = json.loads((Path(__file__).resolve().parents[1] / "schemas" / "review-2.json").read_text(encoding="utf-8"))

@@ -26,9 +26,9 @@ from pathlib import Path
 
 import pytest
 
-from policypack.cli import main
-from policypack.static import semgrep_cli
-from policypack.static.semgrep_cli import SemgrepBackend, _env
+from policyofficer.cli import main
+from policyofficer.static import semgrep_cli
+from policyofficer.static.semgrep_cli import SemgrepBackend, _env
 
 REPO = Path(__file__).resolve().parents[1]
 VIOLATING = REPO / "policies/kr-core/tests/pipa-22-2/violating.ts"
@@ -49,8 +49,8 @@ HOSTILE = {
 
 
 def _pack_config() -> dict:
-    from policypack.pack.loader import load_pack
-    from policypack.static.compile import compile_static
+    from policyofficer.pack.loader import load_pack
+    from policyofficer.static.compile import compile_static
 
     return compile_static(load_pack(REPO / "policies" / "kr-core"))
 
@@ -258,8 +258,8 @@ def test_reinstall_hint_never_installs_by_bare_registry_name():
     import re
 
     hint = semgrep_cli.REINSTALL_HINT
-    assert not re.search(r"(uv tool install|pip install|pipx install)[^·)]*\bpolicypack\b", hint)
-    assert "uv tool upgrade --reinstall policypack" in hint and "pipx reinstall policypack" in hint
+    assert not re.search(r"(uv tool install|pip install|pipx install)[^·)]*\bpolicyofficer\b", hint)
+    assert "uv tool upgrade --reinstall policyofficer" in hint and "pipx reinstall policyofficer" in hint
 
 
 # ── AI 판정자 ───────────────────────────────────────────────────────────────
@@ -280,7 +280,7 @@ def test_live_judge_announces_what_leaves_the_machine(tmp_path, monkeypatch, cap
         encoding="utf-8",
     )
     fake.chmod(0o755)
-    import policypack.judge.claude_cli as claude_cli
+    import policyofficer.judge.claude_cli as claude_cli
 
     monkeypatch.setattr(claude_cli, "BIN", str(fake))
     target = tmp_path / "a.js"
@@ -293,14 +293,14 @@ def test_live_judge_announces_what_leaves_the_machine(tmp_path, monkeypatch, cap
 
 def test_notice_states_what_is_sent():
     """약한 근거로만 충족이 보이는 파일도 판정자에게 간다. 고지가 그 범위를 말해야 한다."""
-    from policypack.cli import _egress_notice
+    from policyofficer.cli import _egress_notice
 
     assert "약한 근거로만 충족이 보이는 파일 포함" in _egress_notice("claude-cli:haiku", env={})
 
 
 def test_notice_names_the_real_destination_and_telemetry():
     """판정자 CLI 는 사용자의 게이트웨이·텔레메트리 설정을 따른다. 끊지 않고 알린다."""
-    from policypack.cli import _egress_notice
+    from policyofficer.cli import _egress_notice
 
     env = {"ANTHROPIC_BASE_URL": "https://gw.example.invalid", "OTEL_LOG_USER_PROMPTS": "1"}
     text = _egress_notice("claude-cli:haiku", env=env)
@@ -318,19 +318,19 @@ def test_sigterm_cleans_up_temp_files(tmp_path):
     tmp.mkdir()
     env = {**os.environ, "TMPDIR": str(tmp)}
     proc = subprocess.Popen(
-        [sys.executable, "-m", "policypack", "scan", str(REPO / "policies" / "kr-core" / "tests")],
+        [sys.executable, "-m", "policyofficer", "scan", str(REPO / "policies" / "kr-core" / "tests")],
         env=env,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
     deadline = time.time() + 60
-    while time.time() < deadline and not list(tmp.glob("policypack-semgrep-*")):
+    while time.time() < deadline and not list(tmp.glob("policyofficer-semgrep-*")):
         time.sleep(0.05)
-    assert list(tmp.glob("policypack-semgrep-*")), "semgrep 이 시작되지 않았다"
+    assert list(tmp.glob("policyofficer-semgrep-*")), "semgrep 이 시작되지 않았다"
     proc.send_signal(signal.SIGTERM)
     proc.wait(timeout=60)
     assert proc.returncode == 128 + signal.SIGTERM
-    assert not list(tmp.glob("policypack-semgrep-*"))
+    assert not list(tmp.glob("policyofficer-semgrep-*"))
     assert not list(tmp.glob("tmp*.yaml"))
 
 
@@ -352,7 +352,7 @@ def test_a_user_scheme_semgrep_is_not_ours_inside_a_venv(monkeypatch):
     import site
     import sysconfig
 
-    from policypack.static import semgrep_cli
+    from policyofficer.static import semgrep_cli
 
     monkeypatch.setattr(site, "ENABLE_USER_SITE", False)
     user = sysconfig.get_path("scripts", f"{os.name}_user")
@@ -369,7 +369,7 @@ def test_a_user_scheme_semgrep_is_not_ours_inside_a_venv(monkeypatch):
 )
 def test_bad_engine_settings_are_clear_errors(tmp_path, monkeypatch, capsys, var, value, msg):
     """traceback 대신 오류 한 줄과 종료 코드 2."""
-    from policypack.cli import main
+    from policyofficer.cli import main
 
     monkeypatch.setenv(var, str(tmp_path) if value == "DIR" else value)
     (tmp_path / "a.ts").write_text("export const a = 1;\n", encoding="utf-8")
@@ -392,7 +392,7 @@ def test_a_target_the_engine_did_not_scan_is_not_clean(tmp_path, monkeypatch):
 def test_a_relative_engine_path_is_made_absolute(tmp_path, monkeypatch):
     """semgrep 은 대상 폴더에서 돈다. 상대 경로를 그대로 두면 다른 파일을 불렀다(검토에서 실측: 검사하는 트리 안의
     bin/semgrep)."""
-    from policypack.static.semgrep_cli import resolve
+    from policyofficer.static.semgrep_cli import resolve
 
     (tmp_path / "bin").mkdir()
     engine = tmp_path / "bin" / "semgrep"
@@ -406,7 +406,7 @@ def test_a_relative_engine_path_is_made_absolute(tmp_path, monkeypatch):
 
 def test_an_empty_timeout_setting_means_the_default(monkeypatch):
     """CI 의 설정 안 된 변수는 빈 값이다. 빈 POLICYPACK_SEMGREP 처럼 없는 것으로 본다."""
-    from policypack.static.semgrep_cli import SemgrepBackend, timeout_from_env
+    from policyofficer.static.semgrep_cli import SemgrepBackend, timeout_from_env
 
     monkeypatch.setenv("POLICYPACK_SEMGREP_TIMEOUT", "")
     assert timeout_from_env() == SemgrepBackend.DEFAULT_TIMEOUT

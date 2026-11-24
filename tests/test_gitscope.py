@@ -8,8 +8,8 @@ from pathlib import Path
 
 import pytest
 
-from policypack import gitscope
-from policypack.cli import main
+from policyofficer import gitscope
+from policyofficer.cli import main
 
 VIOLATING = (
     'export async function blast(users) {\n  for (const u of users) await sms.send(u.phone, "(광고) 가을 세일");\n}\n'
@@ -210,7 +210,7 @@ def test_empty_scope_still_writes_a_valid_report(repo, capsys):
 
 def test_scope_applies_the_same_size_limit_as_a_full_scan(repo, monkeypatch, capsys):
     """같은 파일의 판정이 어떻게 돌렸느냐에 따라 달라지면 안 된다."""
-    import policypack.discover as d
+    import policyofficer.discover as d
 
     monkeypatch.setattr(d, "MAX_BYTES", 10)
     (repo / "a.js").write_text(VIOLATING, encoding="utf-8")
@@ -223,7 +223,7 @@ def test_scope_applies_the_same_size_limit_as_a_full_scan(repo, monkeypatch, cap
 
 def test_repo_under_a_build_directory_is_not_skipped(tmp_path, monkeypatch):
     """SKIP_DIRS 는 검사 루트 아래에서만 본다. 저장소가 ~/build/app 에 있다고 전부 빼면 안 된다."""
-    from policypack.discover import discover
+    from policyofficer.discover import discover
 
     proj = tmp_path / "build" / "proj"
     proj.mkdir(parents=True)
@@ -324,7 +324,7 @@ def test_the_hook_passes_files_after_a_separator_and_skips_generated_files():
 
     from ruamel.yaml import YAML
 
-    from policypack.discover import GENERATED_SUFFIXES, SKIP_DIRS
+    from policyofficer.discover import GENERATED_SUFFIXES, SKIP_DIRS
 
     hook = YAML(typ="safe", pure=True).load((Path(__file__).parents[1] / ".pre-commit-hooks.yaml").read_text())[0]
     assert hook["args"] == ["--"]

@@ -5,7 +5,7 @@
 # Ultimate, 파이프라인 화면의 보고서 탭은 Premium 이상이다. GitLab 은 대상 가지(기본 가지)의 마지막 파이프라인 보고서와
 # 견줘 "새 경고"를 고르므로, 기본 가지에서도 돌리고 머지 요청과 같은 범위(저장소 전체)를 검사한다. --diff 로 바뀐 파일만
 # 검사하면 바뀌지 않은 파일의 경고가 모두 "사라진 경고"로 보인다.
-policypack:
+policyofficer:
   stage: test
   image: python:3.12-slim          # glibc 2.36. semgrep 엔진은 glibc 2.34 이상이 필요하다(Alpine 이면 musl 1.2)
   rules:
@@ -18,7 +18,7 @@ policypack:
     - uv tool install -q "<설치할 것: git+<이 저장소 URL>@<태그> 또는 휠 파일 경로>"
     - export PATH="$HOME/.local/bin:$PATH"
   script:
-    - policypack scan . --output-format gitlab > gl-code-quality-report.json
+    - policyofficer scan . --output-format gitlab > gl-code-quality-report.json
   # 1 = 사람이 볼 것이 있음(경고). 2 = 도구 오류라 파이프라인을 멈춘다
   allow_failure:
     exit_codes: [1]

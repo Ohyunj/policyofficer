@@ -926,7 +926,7 @@ wheels = [
 ]
 
 [[package]]
-name = "policypack"
+name = "policyofficer"
 version = "0.3.0.dev0"
 source = { editable = "." }
 dependencies = [

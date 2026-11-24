@@ -1,4 +1,4 @@
-"""policypack review: 이해 → 의무별 근거 찾기 → 반박을 가짜 답으로 끝까지 돌린다. 모델 호출 0회."""
+"""policyofficer review: 이해 → 의무별 근거 찾기 → 반박을 가짜 답으로 끝까지 돌린다. 모델 호출 0회."""
 
 from __future__ import annotations
 
@@ -9,9 +9,9 @@ from pathlib import Path
 
 import pytest
 
-from policypack import review as rv
-from policypack.judge.agent import AgentAnswer, AgentJudge
-from policypack.review import prompts as P
+from policyofficer import review as rv
+from policyofficer.judge.agent import AgentAnswer, AgentJudge
+from policyofficer.review import prompts as P
 
 jsonschema = pytest.importorskip("jsonschema")
 SCHEMA = json.loads((Path(__file__).resolve().parents[1] / "schemas" / "review-2.json").read_text(encoding="utf-8"))
@@ -610,7 +610,7 @@ def test_goods_duties_wait_for_a_goods_signal(tmp_path):
 def test_a_cut_search_says_the_total_and_the_gate_matches_it(tmp_path):
     """검색 결과가 잘려도 맞는 줄의 전체 수를 알려 주고, 관문은 그 수와 맞춰 본다(11/12 실측: 잘린 결과를 본 모델이
     줄 수를 60 으로 적어 검색 거절 213건 중 83건이 이것이었다)."""
-    from policypack.judge.agent import SEARCH_HITS, RepoTools
+    from policyofficer.judge.agent import SEARCH_HITS, RepoTools
 
     (tmp_path / "a.ts").write_text("".join(f"const password{i} = 1;\n" for i in range(50)))
     (tmp_path / "b.ts").write_text("".join(f"const password{i} = 1;\n" for i in range(30)))
@@ -922,7 +922,7 @@ def test_the_rebuttal_can_be_turned_off_and_the_report_says_so(tmp_path):
     assert doc["run"]["rebut"] is False and doc["run"]["models"]["verify"] == "none"
     asked = [i for i in doc["checklist"] if i["first"] and i["status"] in (*rv.DROPS, *rv.TO_CHECK)]
     assert asked and all(i["verification"] == {"result": "not-run", "why": "rebut-off"} for i in asked)
-    from policypack.cli import build_parser
+    from policyofficer.cli import build_parser
 
     assert build_parser().parse_args(["review", ".", "--no-rebut"]).no_rebut
     assert not build_parser().parse_args(["review", "."]).no_rebut
@@ -1020,7 +1020,7 @@ def test_bundles_are_a_table_of_duties_that_look_at_the_same_code():
         ["pipa-29-1"],
         ["netact-50-1"],
     ]
-    from policypack.cli import build_parser
+    from policyofficer.cli import build_parser
 
     assert build_parser().parse_args(["review", ".", "--batch", "bundle"]).batch == "bundle"
 
@@ -1045,7 +1045,7 @@ def test_self_labels_count_only_with_a_grounded_citation():
     assert rv.other_side(guard, "seen-in-code", None, "server", gap, bad)[0] == "check-outside"
     # 반박도 같다: 빈틈을 인용하면 금지 의무의 빼는 답을 깬다
     root = Path(__file__).resolve().parents[1]
-    line = {"file": "src/policypack/review/prompts.py", "line": 1, "text": '"""review 의 질문 세 가지'}
+    line = {"file": "src/policyofficer/review/prompts.py", "line": 1, "text": '"""review 의 질문 세 가지'}
     f = {"status": "likely-not-applicable", "gate": None}
     flip = _flip("확인할 것(코드에서 본 것)", [line], applies="예", shows="빈틈")
     assert rv.judge_rebut(root, lure, flip, f, None, None, False)["result"] == "overturned"
@@ -1114,6 +1114,6 @@ def test_the_rebuttal_can_be_limited_to_what_was_found(tmp_path):
         else:
             assert i["duty"] not in asked and i["verification"] == {"result": "not-run", "why": "rebut-scope"}
     assert any(i["verification"].get("why") == "rebut-scope" for i in doc["checklist"])
-    from policypack.cli import build_parser
+    from policyofficer.cli import build_parser
 
     assert build_parser().parse_args(["review", ".", "--rebut-scope", "found"]).rebut_scope == "found"

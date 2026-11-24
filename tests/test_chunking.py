@@ -10,12 +10,12 @@ from __future__ import annotations
 import dataclasses
 from pathlib import Path
 
-from policypack.cli import main
-from policypack.model import Rule
-from policypack.pack.loader import load_pack
-from policypack.static.backend import StaticResult
-from policypack.static.compile import compile_static
-from policypack.static.semgrep_cli import SemgrepBackend
+from policyofficer.cli import main
+from policyofficer.model import Rule
+from policyofficer.pack.loader import load_pack
+from policyofficer.static.backend import StaticResult
+from policyofficer.static.compile import compile_static
+from policyofficer.static.semgrep_cli import SemgrepBackend
 
 REPO = Path(__file__).resolve().parents[1]
 FIX = REPO / "policies" / "kr-core" / "tests"
@@ -86,7 +86,7 @@ def test_absorb_covers_every_field():
 
 def test_absorb_drops_the_lookup_cache():
     """색인을 만든 뒤 합치면 옛 색인이 남으면 안 된다. 남으면 뒤 청크의 매치가 보이지 않는다."""
-    from policypack.static.backend import Match, Pos, PredicateKey, Span
+    from policyofficer.static.backend import Match, Pos, PredicateKey, Span
 
     key = PredicateKey("p", "r", "applies-when", "c")
     a, b = StaticResult(), StaticResult()

@@ -5,8 +5,8 @@
     uv run python scripts/lawmap_table.py ~/.cache/policypack-eval/lawmap-2026-10-14
 
 입력  <지도 폴더>/merged.json(의무 지도), <지도 폴더>/raw/(법제처 DRF 로 받은 법령·행정규칙 원문 JSON·별표 글)
-      src/policypack/profile/features.yaml(기능과 의무를 붙이는 규칙)
-출력  src/policypack/profile/duties.jsonl   코드에 흔적이 남는 의무(code_trace 가 no 가 아닌 것)마다 한 줄.
+      src/policyofficer/profile/features.yaml(기능과 의무를 붙이는 규칙)
+출력  src/policyofficer/profile/duties.jsonl   코드에 흔적이 남는 의무(code_trace 가 no 가 아닌 것)마다 한 줄.
                                             기능·대조 결과·검토 층 후보를 싣는다
       lawmap/review-candidates.csv          검토 층 후보를 기능 묶음별로 나눈 팀원용 작업 표
 
@@ -39,8 +39,8 @@ from ruamel.yaml import YAML
 
 REPO = Path(__file__).resolve().parents[1]
 PACK = REPO / "policies" / "kr-core" / "pack.yaml"
-FEATURES = REPO / "src" / "policypack" / "profile" / "features.yaml"
-TABLE = REPO / "src" / "policypack" / "profile" / "duties.jsonl"
+FEATURES = REPO / "src" / "policyofficer" / "profile" / "features.yaml"
+TABLE = REPO / "src" / "policyofficer" / "profile" / "duties.jsonl"
 CSV_OUT = REPO / "lawmap" / "review-candidates.csv"
 
 COMMON, STATUS = "common", "status"
@@ -132,7 +132,7 @@ def main(argv: list[str]) -> int:
     prohibitions = set(spec.get("prohibitions") or [])
     assert prohibitions <= known, f"의무 지도에 없는 금지 의무 id: {sorted(prohibitions - known)}"
 
-    from policypack.pack.loader import load_pack
+    from policyofficer.pack.loader import load_pack
 
     krcore = {d for p in load_pack(PACK).policies for d in p.duties}
     raw, cache, rows, unmapped = lawmap / "raw", {}, [], []

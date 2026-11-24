@@ -9,8 +9,8 @@ from pathlib import Path
 
 import pytest
 
-from policypack.cli import main
-from policypack.integrations import claude_code
+from policyofficer.cli import main
+from policyofficer.integrations import claude_code
 
 REPO = Path(__file__).resolve().parents[1]
 FIX = "policies/kr-core/tests"
@@ -70,7 +70,7 @@ def test_hook_reports_a_needs_review_file_to_claude(capsys):
     out = json.loads(capsys.readouterr().out)
     assert out["decision"] == "block"
     assert "violating.ts" in out["reason"] and "제22조의2" in out["reason"]
-    assert out["systemMessage"].startswith("policypack: violating.ts 에 법·정책 검토 필요 1건")
+    assert out["systemMessage"].startswith("policyofficer: violating.ts 에 법·정책 검토 필요 1건")
 
 
 def test_hook_is_quiet_on_a_compliant_file(capsys):
