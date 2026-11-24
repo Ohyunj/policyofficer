@@ -362,9 +362,9 @@ def test_a_user_scheme_semgrep_is_not_ours_inside_a_venv(monkeypatch):
 @pytest.mark.parametrize(
     "var,value,msg",
     [
-        ("POLICYPACK_SEMGREP", "DIR", "실행할 수 있는 파일이 아닙니다"),
-        ("POLICYPACK_SEMGREP_TIMEOUT", "abc", "0보다 큰 초 단위 숫자"),
-        ("POLICYPACK_SEMGREP_TIMEOUT", "-1", "0보다 큰 초 단위 숫자"),
+        ("POLICYOFFICER_SEMGREP", "DIR", "실행할 수 있는 파일이 아닙니다"),
+        ("POLICYOFFICER_SEMGREP_TIMEOUT", "abc", "0보다 큰 초 단위 숫자"),
+        ("POLICYOFFICER_SEMGREP_TIMEOUT", "-1", "0보다 큰 초 단위 숫자"),
     ],
 )
 def test_bad_engine_settings_are_clear_errors(tmp_path, monkeypatch, capsys, var, value, msg):
@@ -399,14 +399,14 @@ def test_a_relative_engine_path_is_made_absolute(tmp_path, monkeypatch):
     engine.write_text("#!/bin/sh\n", encoding="utf-8")
     engine.chmod(0o755)
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setenv("POLICYPACK_SEMGREP", "bin/semgrep")
+    monkeypatch.setenv("POLICYOFFICER_SEMGREP", "bin/semgrep")
     path, _, _ = resolve()
     assert path.is_absolute() and path == engine.absolute()
 
 
 def test_an_empty_timeout_setting_means_the_default(monkeypatch):
-    """CI 의 설정 안 된 변수는 빈 값이다. 빈 POLICYPACK_SEMGREP 처럼 없는 것으로 본다."""
+    """CI 의 설정 안 된 변수는 빈 값이다. 빈 POLICYOFFICER_SEMGREP 처럼 없는 것으로 본다."""
     from policyofficer.static.semgrep_cli import SemgrepBackend, timeout_from_env
 
-    monkeypatch.setenv("POLICYPACK_SEMGREP_TIMEOUT", "")
+    monkeypatch.setenv("POLICYOFFICER_SEMGREP_TIMEOUT", "")
     assert timeout_from_env() == SemgrepBackend.DEFAULT_TIMEOUT

@@ -4,7 +4,7 @@
 **사용자 저장소에서 돌릴 때 팩을 못 찾는다.** 그 저장소에는 policies/ 가 없으니까.
 그래서 순서를 정해 찾는다.
 
-1. 환경변수 `POLICYPACK_PACK` — 명시한 것이 가장 세다
+1. 환경변수 `POLICYOFFICER_PACK` — 명시한 것이 가장 세다
 2. 이 소스 저장소 (개발 중, 편집 가능 설치)
 3. 패키지에 실린 사본 (`policyofficer/_bundled/`, 휠로 설치했을 때)
 
@@ -29,7 +29,7 @@ def _first(*candidates: Path) -> Path | None:
 
 
 def default_pack() -> Path:
-    env = os.environ.get("POLICYPACK_PACK")
+    env = os.environ.get("POLICYOFFICER_PACK")
     if env:
         return Path(env)
     found = _first(_REPO / "policies" / "kr-core", _BUNDLED / "policies" / "kr-core")

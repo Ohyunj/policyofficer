@@ -30,7 +30,7 @@ import time
 
 from policyofficer.judge.base import SYSTEM, Answer, Failure, Question, parse_answer
 
-BIN = os.environ.get("POLICYPACK_CLAUDE_BIN", "claude")
+BIN = os.environ.get("POLICYOFFICER_CLAUDE_BIN", "claude")
 
 #: 이 목록에서 하나라도 빠지면 판정자가 프롬프트 밖을 본다. 테스트가 해시를 핀한다.
 ISOLATION_FLAGS: tuple[str, ...] = (

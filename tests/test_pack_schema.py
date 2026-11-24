@@ -592,7 +592,7 @@ def test_doctor_fails_when_the_default_pack_is_broken(tmp_path, monkeypatch, cap
 
     from policyofficer.cli import main
 
-    monkeypatch.setenv("POLICYPACK_PACK", str(tmp_path / "missing"))
+    monkeypatch.setenv("POLICYOFFICER_PACK", str(tmp_path / "missing"))
     assert main(["doctor", "--json"]) == 2
     info = json.loads(capsys.readouterr().out)
     assert info["pack_ok"] is False and any("정책 팩" in n for n in info["notes"])
@@ -621,6 +621,6 @@ def test_validate_warns_about_statute_texts_it_cannot_use(tmp_path, capsys):
 def test_doctor_fails_on_a_bad_timeout_setting(monkeypatch, capsys):
     from policyofficer.cli import main
 
-    monkeypatch.setenv("POLICYPACK_SEMGREP_TIMEOUT", "abc")
+    monkeypatch.setenv("POLICYOFFICER_SEMGREP_TIMEOUT", "abc")
     assert main(["doctor"]) == 2
-    assert "POLICYPACK_SEMGREP_TIMEOUT" in capsys.readouterr().out
+    assert "POLICYOFFICER_SEMGREP_TIMEOUT" in capsys.readouterr().out

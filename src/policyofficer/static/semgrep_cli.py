@@ -6,7 +6,7 @@
 (`.venv/bin/semgrep`)이 함께 있다. 둘이 섞이면 어느 엔진이 낸 판정인지 알 수 없게
 되므로 순서를 고정한다.
 
-1. `POLICYPACK_SEMGREP` 환경변수 — 사용자가 명시한 것이 가장 세다
+1. `POLICYOFFICER_SEMGREP` 환경변수 — 사용자가 명시한 것이 가장 세다
 2. 우리 파이썬 환경에 설치된 판 — `pip install semgrep` 이 휠에 동봉한 것
 3. `PATH` 의 것 — 버전이 다르면 경고한다
 4. 없으면 종료 코드 2
@@ -39,7 +39,7 @@ from policyofficer.static.parse import TIMEOUT_THRESHOLD, parse_semgrep_json, ru
 #: 시험한 판. 판이 다르면 같은 팩의 판정이 달라질 수 있어 경고한다(막지는 않는다).
 EXPECTED_VERSION = "1.176"
 
-ENV_VAR = "POLICYPACK_SEMGREP"
+ENV_VAR = "POLICYOFFICER_SEMGREP"
 
 #: 사용자에게 보여 줄 설치 안내. `uv sync` 는 이 저장소를 고치는 사람에게만 뜻이 있다.
 #:
@@ -259,7 +259,7 @@ def diagnose() -> dict:
 
 
 def timeout_from_env() -> float:
-    raw = os.environ.get("POLICYPACK_SEMGREP_TIMEOUT")
+    raw = os.environ.get("POLICYOFFICER_SEMGREP_TIMEOUT")
     if not raw:  # 비어 있으면 없는 것이다(CI 의 설정 안 된 변수)
         return float(SemgrepBackend.DEFAULT_TIMEOUT)
     try:
@@ -267,7 +267,7 @@ def timeout_from_env() -> float:
     except ValueError:
         t = math.nan
     if not math.isfinite(t) or t <= 0:
-        raise BackendError(f"POLICYPACK_SEMGREP_TIMEOUT 은 0보다 큰 초 단위 숫자여야 합니다: {raw!r}")
+        raise BackendError(f"POLICYOFFICER_SEMGREP_TIMEOUT 은 0보다 큰 초 단위 숫자여야 합니다: {raw!r}")
     return t
 
 
@@ -476,7 +476,7 @@ class SemgrepBackend:
             # 시간 제한이 없으면 커밋 전 훅과 CI 가 영원히 멈춘다
             raise BackendError(
                 f"semgrep 이 {self.timeout}초 안에 끝나지 않았습니다 (대상 {len(targets)}개). "
-                f"POLICYPACK_SEMGREP_TIMEOUT 으로 늘릴 수 있습니다."
+                f"POLICYOFFICER_SEMGREP_TIMEOUT 으로 늘릴 수 있습니다."
             ) from e
         finally:
             os.unlink(cfg)

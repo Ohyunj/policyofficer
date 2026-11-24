@@ -131,7 +131,7 @@ def preflight(spec: str) -> str | None:
         if not claude_cli.available():
             return (
                 f"claude 실행 파일을 찾지 못했습니다({claude_cli.BIN}). "
-                "설치하거나 POLICYPACK_CLAUDE_BIN 에 경로를 주세요"
+                "설치하거나 POLICYOFFICER_CLAUDE_BIN 에 경로를 주세요"
             )
     if kind == "anthropic" and not os.environ.get("ANTHROPIC_API_KEY"):
         return "ANTHROPIC_API_KEY 가 없습니다. 키를 설정하거나 claude-cli 판정자를 쓰세요"

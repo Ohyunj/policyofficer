@@ -329,14 +329,14 @@ def test_defaults_fall_back_to_the_bundled_copy(tmp_path, monkeypatch):
     (bundled / "policies" / "kr-core").mkdir(parents=True)
     monkeypatch.setattr(d, "_REPO", tmp_path / "not-a-checkout")
     monkeypatch.setattr(d, "_BUNDLED", bundled)
-    monkeypatch.delenv("POLICYPACK_PACK", raising=False)
+    monkeypatch.delenv("POLICYOFFICER_PACK", raising=False)
     assert d.default_pack() == bundled / "policies" / "kr-core"
 
 
 def test_environment_overrides_defaults(tmp_path, monkeypatch):
     import policyofficer.defaults as d
 
-    monkeypatch.setenv("POLICYPACK_PACK", str(tmp_path / "mine"))
+    monkeypatch.setenv("POLICYOFFICER_PACK", str(tmp_path / "mine"))
     assert d.default_pack() == tmp_path / "mine"
 
 
