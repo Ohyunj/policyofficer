@@ -20,6 +20,7 @@ import json
 import os
 import re
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
@@ -512,9 +513,17 @@ class AgentJudge:
             )
         return ans
 
-    def converse(self, prompt: str, root: Path, budget: int, max_tokens: int = MAX_TOKENS) -> tuple[str, AgentAnswer]:
+    def converse(
+        self,
+        prompt: str,
+        root: Path,
+        budget: int,
+        max_tokens: int = MAX_TOKENS,
+        on_tool: Callable[[str, dict], None] | None = None,
+    ) -> tuple[str, AgentAnswer]:
         """도구를 쓰는 대화 하나. 마지막 답의 글과, 호출 수·사용량·보낸 것·실패를 담은 AgentAnswer 를 돌려준다.
-        답의 해석은 부르는 쪽이 한다(ask 는 진입 파일별 결과, review 는 의무별 결과)."""
+        답의 해석은 부르는 쪽이 한다(ask 는 진입 파일별 결과, review 는 의무별 결과). `on_tool(이름, 입력)` 은 도구를
+        실행하기 직전에 불린다(review 의 진행 표시)."""
         tools = RepoTools(root)
         messages: list = [{"role": "user", "content": prompt}]
         ans = AgentAnswer(budget=budget)
@@ -568,6 +577,8 @@ class AgentJudge:
                 if ans.tool_calls > budget:
                     out = "실행하지 않음(도구 예산 끝)"
                 else:
+                    if on_tool:
+                        on_tool(b.get("name", ""), b.get("input") or {})
                     out = tools.call(b.get("name", ""), b.get("input") or {})
                 results.append({"type": "tool_result", "tool_use_id": b["id"], "content": out})
             if ans.tool_calls >= budget:

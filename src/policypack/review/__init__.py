@@ -65,11 +65,12 @@ from __future__ import annotations
 
 import io
 import os
+import queue
 import re
 import subprocess
 import threading
 import time
-from concurrent.futures import ThreadPoolExecutor
+from collections.abc import Callable
 from contextlib import redirect_stderr, redirect_stdout, suppress
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -79,6 +80,7 @@ from policypack.evaluate.agent_pass import gate
 from policypack.index.roles import SERVICE, Role, classify
 from policypack.judge.agent import AgentAnswer, AgentJudge, RepoTools
 from policypack.profile import load_duties, load_features, profile
+from policypack.review import events as E
 from policypack.review import prompts as P
 
 REVIEW_VERSION = 2
@@ -189,6 +191,8 @@ class Throttle:
         self.start = self.limit = max(1, limit)
         self.active = self.rate_limited = 0
         self._cv = threading.Condition()
+        self.listener: E.Sink = E.ignore
+        """다시 보낼 때의 사건(429 면 throttle, 그 밖의 상태는 retry)을 받는 곳. review 가 진행 표시에 잇는다."""
 
     def __enter__(self):
         with self._cv:
@@ -202,10 +206,14 @@ class Throttle:
             self._cv.notify_all()
 
     def saw(self, status: int) -> None:
-        if status == 429:
-            with self._cv:
-                self.rate_limited += 1
-                self.limit = max(1, self.limit // 2)
+        if status != 429:
+            self.listener(E.Notice("retry", status=status))
+            return
+        with self._cv:
+            before = self.limit
+            self.rate_limited += 1
+            self.limit = max(1, self.limit // 2)
+        self.listener(E.Notice("throttle", status=status, before=before, after=self.limit))
 
     def wrap(self, send):
         def throttled(body: dict) -> dict:
@@ -546,27 +554,76 @@ class Run:
     platforms_from: str = "signal"
     questions: list[dict] = field(default_factory=list)
     t0: float = field(default_factory=time.monotonic)
+    emit: E.Sink = E.ignore
+    """진행 사건을 받는 곳(report/progress 의 표시기). 계산은 사건을 내기만 한다."""
     _lock: threading.Lock = field(default_factory=threading.Lock)
+    _next: int = 0
+    _once: set = field(default_factory=set)
+
+    def qid(self) -> int:
+        """진행 사건의 질문 번호. 기록 번호(n)는 답을 받은 순서라 묻기 전에는 모른다."""
+        with self._lock:
+            self._next += 1
+            return self._next
+
+    def once(self, key: str, event: E.Event) -> None:
+        """처음 한 번만 낸다(단계 시작, 상한 도달 알림)."""
+        with self._lock:
+            if key in self._once:
+                return
+            self._once.add(key)
+        self.emit(event)
+
+    def halt(self) -> None:
+        """Ctrl+C·오류로 멈출 때: 새 질문은 보내지 않고(time-cap), 대화 중인 질문은 다음 차례를 보내지 않는다."""
+        now = time.monotonic()
+        for j in (self.investigator, self.checker):
+            j.deadline = now
+
+    def _tool(self, q: int, name: str, args: dict) -> None:
+        target = args.get("pattern") if name == "search" else args.get("path") or args.get("pattern") or "."
+        self.emit(E.Tool(q, name, str(target or "")[:200]))
 
     def ask(
-        self, stage: str, judge: AgentJudge, prompt: str, budget: int, meta: dict, key: str
+        self,
+        stage: str,
+        judge: AgentJudge,
+        prompt: str,
+        budget: int,
+        meta: dict,
+        key: str,
+        asked: E.Asked | None = None,
     ) -> tuple[dict | None, str | None, int]:
         """상한 안이면 묻고, 답에서 `key` 를 가진 JSON 객체를 읽고, 기록한다. (객체, 실패 까닭, 기록 번호).
         상한에 걸리면 묻지 않고 cost-cap·time-cap 이다. 답이 JSON 이 아니면 도구 없이 한 번 더, 그 답을 요청한 JSON 으로
-        옮겨 달라고 묻는다(repaired). 그래도 안 되면 parse 이고 답의 글 앞부분을 기록에 남긴다."""
+        옮겨 달라고 묻는다(repaired). 그래도 안 되면 parse 이고 답의 글 앞부분을 기록에 남긴다. `asked` 는 보낼 때
+        내는 진행 사건이다(그 질문 번호로 도구 사건을 낸다). 답의 사건(Answered)은 관문을 건 뒤 부르는 쪽이
+        낸다(answered)."""
         if not self.spend.allows(judge.model):
+            self.once("cost-cap", E.Notice("cost-cap"))
             return None, "cost-cap", self._log(stage, judge, meta, None, "cost-cap")
         if judge.deadline is not None and time.monotonic() >= judge.deadline:
+            self.once("time-cap", E.Notice("time-cap"))
             return None, "time-cap", self._log(stage, judge, meta, None, "time-cap")
+        on_tool = None
+        if asked is not None:
+            if stage == "rebut":
+                self.once("stage-rebut", E.Stage("rebut", "start"))
+            self.emit(asked)
+            on_tool = lambda name, args: self._tool(asked.q, name, args)  # noqa: E731
         start = time.monotonic()
-        text, ans = judge.converse(prompt, self.root, budget, max_tokens=MAX_TOKENS)
+        text, ans = judge.converse(prompt, self.root, budget, max_tokens=MAX_TOKENS, on_tool=on_tool)
         self.spend.add(judge.model, ans)
         failure, doc, extra = ans.failure, None, {}
         if failure and failure.startswith("time"):
             failure = "time-cap"
+            self.once("time-cap", E.Notice("time-cap"))
+        elif failure == "transport: skipped":
+            self.once("unreachable", E.Notice("unreachable"))
         if not failure:
             doc = P.parse_object(text, key)
             if doc is None and text.strip() and self.spend.allows(judge.model):
+                self.emit(E.Notice("repair", q=asked.q if asked else None))
                 fixed, fix = judge.converse(P.REPAIR.format(key=key, raw=text[-24000:]), self.root, 0, MAX_TOKENS)
                 self.spend.add(judge.model, fix)
                 ans.calls += fix.calls
@@ -602,6 +659,33 @@ class Run:
             rec["n"] = len(self.questions)
             self.questions.append(rec)
             return rec["n"]
+
+    def answered(self, q: int, n: int, duties: tuple[E.Duty, ...], results: tuple[E.Result, ...] = ()) -> None:
+        """질문 하나의 끝(관문을 건 뒤의 상태). 금액·시간·실패는 기록 `n` 에서 읽는다."""
+        rec = self.questions[n]
+        usd_ = rec.get("usd", 0.0)
+        seconds = rec.get("seconds", 0.0)
+        tools = rec.get("tool_calls", 0)
+        self.emit(E.Answered(q, rec["stage"], usd_, seconds, rec.get("failure"), duties, results, tools))
+
+    def checked(self, q: int, results: list[dict]) -> None:
+        """질문 하나의 답(관문을 건 결과들)을 인용 대조 사건으로 낸다. 조건의 근거로 붙인 프로필 신호는 세지 않는다."""
+        cites = [c for r in results for c in r.get("citations", []) if c.get("why") != "profile"]
+        searches = [x for r in results for x in r.get("searches", [])]
+        if not cites and not searches:
+            return
+        self.once("stage-gate", E.Stage("gate", "start"))
+        ok_c = sum(1 for c in cites if c["ok"])
+        self.emit(E.Checked(q, len(cites), ok_c, len(searches), sum(1 for x in searches if x["ok"])))
+
+
+def duty_of(d: dict) -> E.Duty:
+    return E.Duty(d["id"], d.get("law_short") or d["law"], d["article"], d["title"])
+
+
+def first_cite(cs: list[dict]) -> str | None:
+    c = next((c for c in cs if c.get("ok")), None)
+    return f"{c['file']}:{c['line']}" if c and c.get("line") else (c["file"] if c else None)
 
 
 # ── 1·2. 프로필과 이해 ───────────────────────────────────────────────
@@ -640,8 +724,11 @@ def understand(run: Run, prof: dict, catalog: dict[str, str]) -> dict:
         cite=P.CITE,
         rules=P.RULES,
     )
-    doc, _, _ = run.ask("understand", run.investigator, prompt, budget, {}, "summary")
-    return _understood(run.root, doc, catalog)
+    q = run.qid()
+    doc, _, n = run.ask("understand", run.investigator, prompt, budget, {}, "summary", E.Asked(q, "understand"))
+    out = _understood(run.root, doc, catalog)
+    run.answered(q, n, ())
+    return out
 
 
 def _understood(root: Path, doc: dict | None, catalog: dict[str, str], reused: bool = False) -> dict:
@@ -805,19 +892,30 @@ def investigate(
         rules=P.RULES,
     )
     meta = {"feature": group[0]["feature"], "duties": [d["id"] for d in group]}
-    doc, failure, qn = run.ask("investigate", run.investigator, prompt, budget, meta, "results")
+    q, duties = run.qid(), tuple(duty_of(d) for d in group)
+    asked = E.Asked(q, "investigate", duties)
+    doc, failure, qn = run.ask("investigate", run.investigator, prompt, budget, meta, "results", asked)
     results: dict[str, dict] = {}
     if failure in ("cost-cap", "time-cap") and doc is None and not run.questions[qn].get("calls"):
-        return {d["id"]: {"asked": False, "why": failure, "q": qn} for d in group}
-    by_id = {d["id"]: d for d in group}
-    for r in (doc or {}).get("results") or []:
-        if not isinstance(r, dict) or r.get("duty") not in by_id or r.get("status") not in P.ANSWER:
-            continue
-        results[r["duty"]] = {"asked": True, **judge_first(run.root, by_id[r["duty"]], r, feature, run.lacks), "q": qn}
-    for d in group:
-        if d["id"] not in results:
-            results[d["id"]] = {"asked": True, "why": failure or "no-answer", "q": qn}
+        results = {d["id"]: {"asked": False, "why": failure, "q": qn} for d in group}
+    else:
+        by_id = {d["id"]: d for d in group}
+        for r in (doc or {}).get("results") or []:
+            if not isinstance(r, dict) or r.get("duty") not in by_id or r.get("status") not in P.ANSWER:
+                continue
+            first = judge_first(run.root, by_id[r["duty"]], r, feature, run.lacks)
+            results[r["duty"]] = {"asked": True, **first, "q": qn}
+        for d in group:
+            if d["id"] not in results:
+                results[d["id"]] = {"asked": True, "why": failure or "no-answer", "q": qn}
+    run.checked(q, list(results.values()))
+    run.answered(q, qn, duties, tuple(_found(x.id, results[x.id]) for x in duties))
     return results
+
+
+def _found(duty: str, r: dict) -> E.Result:
+    """조사 뒤의 상태(관문을 건 것). 답이 없으면 unknown."""
+    return E.Result(duty, r.get("status", "unknown"), first_cite(r.get("citations", [])))
 
 
 def judge_first(root: Path, d: dict, r: dict, feature: dict | None, lacking: str | None) -> dict:
@@ -901,9 +999,9 @@ def rebut(
     run: Run, group: list[dict], first: dict[str, dict], summary: str, platforms: str, feature: dict | None = None
 ) -> dict[str, dict]:
     items = [d for d in group if first.get(d["id"], {}).get("status") in (*DROPS, *TO_CHECK)]
-    if not items:
-        return {}
-    if not run.limits.rebut:
+    if not items or not run.limits.rebut:
+        if run.limits.rebut:
+            run.emit(E.Planned(-1))  # 이 묶음은 반박을 묻지 않는다
         return {d["id"]: {"result": "not-run", "why": "rebut-off"} for d in items}
     out: dict[str, dict] = {}
     if run.limits.rebut_scope == "found":
@@ -913,6 +1011,7 @@ def rebut(
         }
         items = [d for d in items if d["id"] not in out]
         if not items:
+            run.emit(E.Planned(-1))
             return out
     budget = _budget(len(items), 15, 3, 35)
     blocks = []
@@ -941,19 +1040,30 @@ def rebut(
         rules=P.RULES,
     )
     meta = {"feature": group[0]["feature"], "duties": [d["id"] for d in items]}
-    doc, failure, qn = run.ask("rebut", run.checker, prompt, budget, meta, "results")
+    q, duties = run.qid(), tuple(duty_of(d) for d in items)
+    doc, failure, qn = run.ask("rebut", run.checker, prompt, budget, meta, "results", E.Asked(q, "rebut", duties))
     if failure in ("cost-cap", "time-cap") and doc is None and not run.questions[qn].get("calls"):
-        return out | {d["id"]: {"result": "not-run", "why": failure, "q": qn} for d in items}
-    by_id = {d["id"]: d for d in items}
-    same = run.investigator.model == run.checker.model
-    for r in (doc or {}).get("results") or []:
-        if not isinstance(r, dict) or r.get("duty") not in by_id or r.get("result") not in ("유지", "뒤집음"):
-            continue
-        d = by_id[r["duty"]]
-        out[r["duty"]] = {**judge_rebut(run.root, d, r, first[r["duty"]], feature, run.lacks, same), "q": qn}
-    for d in items:
-        out.setdefault(d["id"], {"result": "not-run", "why": failure or "no-answer", "q": qn})
+        out |= {d["id"]: {"result": "not-run", "why": failure, "q": qn} for d in items}
+    else:
+        by_id = {d["id"]: d for d in items}
+        same = run.investigator.model == run.checker.model
+        for r in (doc or {}).get("results") or []:
+            if not isinstance(r, dict) or r.get("duty") not in by_id or r.get("result") not in ("유지", "뒤집음"):
+                continue
+            d = by_id[r["duty"]]
+            out[r["duty"]] = {**judge_rebut(run.root, d, r, first[r["duty"]], feature, run.lacks, same), "q": qn}
+        for d in items:
+            out.setdefault(d["id"], {"result": "not-run", "why": failure or "no-answer", "q": qn})
+    run.checked(q, [out[d["id"]] for d in items])
+    run.answered(q, qn, duties, tuple(_rebutted(x, out[x.id], first[x.id]) for x in duties))
     return out
+
+
+def _rebutted(x: E.Duty, r: dict, f: dict) -> E.Result:
+    """반박 뒤의 상태: 뒤집었으면 반박의 상태, 아니면 조사 답의 상태."""
+    turned = r["result"] == "overturned"
+    status = r["status"] if turned else f["status"]
+    return E.Result(x.id, status, first_cite(r["citations"] if turned else f["citations"]), r["result"])
 
 
 def _base(d: dict, static: list[dict]) -> dict:
@@ -1156,6 +1266,51 @@ def groups_of(review: list[dict], batch: str) -> list[list[dict]]:
     return out
 
 
+def parallel(fn: Callable, items: list, workers: int) -> list:
+    """`items` 마다 `fn` 을 동시에 `workers` 개까지 돌려 순서대로 결과를 낸다(pool.map 과 같다). 일꾼은 데몬 스레드다:
+    Ctrl+C·오류로 멈추면 남은 일은 꺼내지 않고, 대화 중인 요청을 기다리지 않고 끝난다(ThreadPoolExecutor 는 끝날 때
+    남은 일과 진행 중인 요청을 모두 기다려 Ctrl+C 뒤에도 질문을 더 보냈다). 일 하나가 예외를 내면 그 예외를 낸다."""
+    todo: queue.SimpleQueue = queue.SimpleQueue()
+    for i, x in enumerate(items):
+        todo.put((i, x))
+    out: dict[int, tuple[bool, object]] = {}
+    cv = threading.Condition()
+
+    def worker() -> None:
+        while True:
+            try:
+                i, x = todo.get_nowait()
+            except queue.Empty:
+                return
+            try:
+                r = (True, fn(x))
+            except BaseException as e:  # noqa: BLE001 — 주 스레드에서 다시 낸다
+                r = (False, e)
+            with cv:
+                out[i] = r
+                cv.notify_all()
+
+    for _ in range(min(max(1, workers), len(items))):
+        threading.Thread(target=worker, daemon=True).start()
+    results = []
+    try:
+        for i in range(len(items)):
+            with cv:
+                while i not in out:
+                    cv.wait()
+                ok, r = out.pop(i)
+            if not ok:
+                raise r
+            results.append(r)
+    finally:
+        while True:  # 멈출 때 남은 일을 비운다(일꾼은 지금 일만 끝내고 나간다)
+            try:
+                todo.get_nowait()
+            except queue.Empty:
+                break
+    return results
+
+
 def plan(root: Path, use_static: bool = True) -> dict:
     """모델을 부르지 않고 무엇을 물을지만 센다(비용 어림용)."""
     root = root.resolve()
@@ -1182,37 +1337,81 @@ def review(
     use_static: bool = True,
     throttles: tuple[Throttle, ...] = (),
     reuse: dict | None = None,
+    progress: E.Sink = E.ignore,
 ) -> dict:
-    """`reuse` 는 같은 저장소·커밋의 앞 review 결과다. 주면 이해 단계를 묻지 않고 그 결과를 쓴다."""
+    """`reuse` 는 같은 저장소·커밋의 앞 review 결과다. 주면 이해 단계를 묻지 않고 그 결과를 쓴다. `progress` 는 진행
+    사건(review/events)을 받는다. 사건은 결과에 영향을 주지 않는다."""
     limits = limits or Limits()
     root = root.resolve()
     t0 = time.monotonic()
     for j in (investigator, checker):
         j.deadline = t0 + limits.seconds
-    run = Run(root, investigator, checker, limits, Spend(limits.usd), t0=t0)
+    run = Run(root, investigator, checker, limits, Spend(limits.usd), t0=t0, emit=progress)
+    for t in throttles:
+        t.listener = progress
 
+    progress(E.Stage("profile", "start"))
     prof = profile(root)
-    static, static_err = static_results(root) if use_static else ({}, None)
+    progress(E.Stage("profile", "end", {"features": len(prof["features"]), "platforms": prof.get("platforms", [])}))
+    if use_static:
+        progress(E.Stage("static", "start"))
+        static, static_err = static_results(root)
+        hits = sum(len(v) for v in static.values())
+        detail = {"error": static_err} if static_err else {"findings": hits, "duties": len(static)}
+        progress(E.Stage("static", "fail" if static_err else "end", detail))
+    else:
+        static, static_err = {}, None
+        progress(E.Stage("static", "skip", {"why": "off"}))
     catalog = {f["id"]: f["name"] for f in load_features()["features"]}
-    und = from_previous(root, reuse, catalog) if reuse is not None else understand(run, prof, catalog)
+    if reuse is not None:
+        und = from_previous(root, reuse, catalog)
+    else:
+        progress(E.Stage("understand", "start"))
+        progress(E.Planned(1))
+        und = understand(run, prof, catalog)
     platforms, run.platforms_from = platforms_of(prof, und)
     run.lacks = lacks(root, platforms)
     features, listed, review_duties, skipped = select(prof, und, static)
     by_feature = {f["id"]: f for f in features}
     groups = groups_of(review_duties, limits.batch)
     plats = _platforms(platforms)
+    live = sum(1 for f in features if "removed" not in f)
+    detail = {"features": live, "nodes": len(und["nodes"]), "edges": len(und["edges"]), "answered": und["answered"]}
+    progress(E.Stage("understand", "skip" if reuse is not None else "end", {**detail, "why": "reused"}))
+
+    lock, done = threading.Lock(), [0]
 
     def work(group: list[dict]) -> tuple[dict, dict]:
         feature = by_feature.get(group[0]["feature"])
         first = investigate(run, group, feature, und["summary"], static, plats)
+        with lock:
+            done[0] += 1
+            last = done[0] == len(groups)
+        if last:
+            progress(E.Stage("investigate", "end"))
         return first, rebut(run, group, first, und["summary"], plats, feature)
 
     firsts: dict[str, dict] = {}
     checks: dict[str, dict] = {}
-    with ThreadPoolExecutor(max_workers=max(1, limits.concurrency)) as pool:
-        for first, chk in pool.map(work, groups):
+    if groups:
+        progress(E.Planned(len(groups) * (2 if limits.rebut else 1)))
+        progress(E.Stage("investigate", "start", {"questions": len(groups), "duties": len(review_duties)}))
+    else:
+        progress(E.Stage("investigate", "skip", {"why": "nothing"}))
+    if not limits.rebut:
+        progress(E.Stage("rebut", "skip", {"why": "off"}))
+    try:
+        for first, chk in parallel(work, groups, limits.concurrency):
             firsts |= first
             checks |= chk
+    except BaseException:
+        run.halt()
+        raise
+    for stage in ("rebut", "gate"):
+        if f"stage-{stage}" in run._once:
+            progress(E.Stage(stage, "end"))
+        elif stage == "gate" or limits.rebut:
+            progress(E.Stage(stage, "skip", {"why": "nothing"}))
 
     goods = _goods()
     checklist = arrange(
