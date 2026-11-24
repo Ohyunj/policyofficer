@@ -31,6 +31,16 @@ def test_the_table_has_one_record_for_each_duty_the_review_asks():
     assert not [d for d, s in table.items() if "어기면" in s["label"]]
 
 
+def test_an_asked_decree_duty_does_not_repeat_the_decree_in_its_article():
+    """'인공지능기본법 시행령 시행령 제27조제1항' 처럼 짧은 법 이름과 조문에 '시행령'이 겹치지 않는다(11/24 화면)."""
+    doubled = [
+        d["id"]
+        for d in profile.load_duties()
+        if d.get("addressee") and d["law_short"].endswith("시행령") and d["article"].startswith("시행령")
+    ]
+    assert doubled == []
+
+
 @pytest.fixture
 def table_dir(tmp_path, monkeypatch):
     """표를 tmp 로 옮겨 고쳐 본다. 끝나면 캐시를 비운다."""
