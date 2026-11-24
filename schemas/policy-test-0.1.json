@@ -139,7 +139,7 @@
   "additionalProperties": false,
   "properties": {
     "apiVersion": {
-      "const": "policypack/test-0.1",
+      "const": "policyofficer/test-0.1",
       "title": "Apiversion",
       "type": "string"
     },

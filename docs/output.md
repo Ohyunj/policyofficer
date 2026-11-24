@@ -31,6 +31,8 @@ Quality(`--output-format gitlab`)는 그 형식의 규격을 따르고, 지문�
 | 결과 스키마의 `$id` | `https://github.com/plitsoft/policypack/schemas/report-1.json`, `https://policypack.dev/schemas/review-2.json` | `https://github.com/minhowow/policyofficer/schemas/report-1.json`, `https://github.com/minhowow/policyofficer/schemas/review-2.json` |
 | 결과 스키마 `tool.name` 의 `const` | `"policypack"` | `"policyofficer"` |
 | 환경 변수 | `POLICYPACK_PACK`·`POLICYPACK_SEMGREP`·`POLICYPACK_SEMGREP_TIMEOUT`·`POLICYPACK_CLAUDE_BIN` | `POLICYOFFICER_PACK`·`POLICYOFFICER_SEMGREP`·`POLICYOFFICER_SEMGREP_TIMEOUT`·`POLICYOFFICER_CLAUDE_BIN`(옛 이름은 읽지 않는다) |
+| 팩 파일 `apiVersion`(웹의 `pack-meta` 가 옮기는 값) | `policypack/v0.4` | `policyofficer/v0.4`(팩 문법은 그대로. 옛 값은 거절한다) |
+| 정책 테스트 파일 `apiVersion` | `policypack/test-0.1` | `policyofficer/test-0.1` |
 | review 결과를 두는 곳(stdout 이 터미널일 때) | `${XDG_CACHE_HOME:-~/.cache}/policypack/reviews/` | `${XDG_CACHE_HOME:-~/.cache}/policyofficer/reviews/` |
 | 소스 안의 표 경로 | `src/policypack/profile/{duties.jsonl,features.yaml,sanctions.jsonl}` | `src/policyofficer/profile/…` |
 

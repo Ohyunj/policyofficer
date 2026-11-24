@@ -552,7 +552,7 @@
   "additionalProperties": false,
   "properties": {
     "apiVersion": {
-      "const": "policypack/v0.4",
+      "const": "policyofficer/v0.4",
       "title": "Apiversion",
       "type": "string"
     },

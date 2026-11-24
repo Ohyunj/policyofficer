@@ -42,7 +42,7 @@ def write_suite(tmp_path: Path, cases: str, rule: str = RULE) -> Path:
     for f in DATA.iterdir():
         (tmp_path / f.name).write_bytes(f.read_bytes())
     p = tmp_path / "t.test.yaml"
-    p.write_text(f"apiVersion: policypack/test-0.1\nrule: {rule}\ncases:\n{cases}", encoding="utf-8")
+    p.write_text(f"apiVersion: policyofficer/test-0.1\nrule: {rule}\ncases:\n{cases}", encoding="utf-8")
     return p
 
 

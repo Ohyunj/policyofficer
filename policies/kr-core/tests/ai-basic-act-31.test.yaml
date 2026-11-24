@@ -1,5 +1,5 @@
 # yaml-language-server: $schema=../../../schemas/policy-test-0.1.json
-apiVersion: policypack/test-0.1
+apiVersion: policyofficer/test-0.1
 rule: kr.ai-basic-act.31/ai-output-without-label
 cases:
   - file: ai-basic-act-31/violating.tsx

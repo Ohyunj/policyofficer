@@ -21,7 +21,7 @@
 #   duties 는 국내 법 의무 지도(docs/lawmap/duties.jsonl, 2026-10-14 조사)의 의무 id 다. 그 줄들을 이 폴더의
 #   _duties.jsonl 에 옮겨 두었다. 판정에는 쓰이지 않고, 에이전트형 판정기가 의무 설명을 읽는 데 쓴다.
 
-apiVersion: policypack/v0.4
+apiVersion: policyofficer/v0.4
 
 pack:
   id: kr-core

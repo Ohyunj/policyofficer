@@ -48,7 +48,7 @@ from policyofficer.pack.loader import format_errors
 from policyofficer.static.backend import PredicateKey
 from policyofficer.static.compile import GROUP_APPLIES, compile_static
 
-TEST_API = "policypack/test-0.1"
+TEST_API = "policyofficer/test-0.1"
 _yaml = YAML(typ="safe", pure=True)
 
 APPLIES_AI = "applies-ai"

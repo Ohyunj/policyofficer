@@ -7,7 +7,7 @@
 # 이 정책의 정적 대안 셋(prior-notice-text·notice-component·notice-gate-flag)은 모두 약한 근거라
 # AI 확인 없이는 경고를 풀지 않는다. 그래서 그 대안의 픽스처에는 ai-prior-notice 스텁이 있고, 스텁은
 # 파일에 실제로 있는 줄을 인용할 때만 '예'다.
-apiVersion: policypack/test-0.1
+apiVersion: policyofficer/test-0.1
 rule: kr.ai-basic-act.31-1/genai-feature-without-prior-notice
 cases:
   # ── 위반 모양 ──────────────────────────────────────────────────────────────

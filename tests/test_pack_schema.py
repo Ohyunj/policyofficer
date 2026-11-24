@@ -183,7 +183,7 @@ def test_review_dates_are_set(pack):
 # ── 잘못된 팩은 거부된다 ────────────────────────────────────────────────────
 
 MINIMAL = """
-apiVersion: policypack/v0.4
+apiVersion: policyofficer/v0.4
 pack: {id: t, title: 시험}
 policies:
   - id: p1
@@ -211,7 +211,7 @@ def test_minimal_pack_is_valid(tmp_path):
 @pytest.mark.parametrize(
     "bad,why",
     [
-        (MINIMAL.replace("policypack/v0.4", "policypack/v0.3"), "옛 판은 거부"),
+        (MINIMAL.replace("policyofficer/v0.4", "policyofficer/v0.3"), "옛 판은 거부"),
         (MINIMAL.replace("pattern-regex: foo", "patern-regex: foo"), "오타 난 Semgrep 키"),
         (MINIMAL.replace("static: {pattern-regex: foo}", "statik: {pattern-regex: foo}"), "모르는 필드"),
         (MINIMAL.replace("{id: a1, static: {pattern-regex: foo}}", "{id: a1}"), "조건 몸통이 없음"),

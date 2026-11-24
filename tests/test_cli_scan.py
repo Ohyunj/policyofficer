@@ -571,7 +571,7 @@ def test_dates_in_a_rule_body_do_not_break_the_run(tmp_path, capsys):
     pack = tmp_path / "pack"
     pack.mkdir()
     (pack / "pack.yaml").write_text(
-        "apiVersion: policypack/v0.4\npack: {id: t, title: 시험}\ndefaults: {languages: [typescript]}\n"
+        "apiVersion: policyofficer/v0.4\npack: {id: t, title: 시험}\ndefaults: {languages: [typescript]}\n"
         "policies:\n  - id: p1\n    category: c\n    title: 시험 정책\n    rules:\n      - id: r1\n"
         "        applies-when:\n          - {id: a1, static: {pattern-regex: 2026-09-29}}\n"
         "        compliant-if-any:\n"

@@ -28,7 +28,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-API_VERSION = "policypack/v0.4"
+API_VERSION = "policyofficer/v0.4"
 
 
 def _kebab(name: str) -> str:

@@ -8,7 +8,7 @@
 # 끝나지만, 야간 차단이 없는 광고 문자 픽스처가 셋 있다(sms-name-address·sms-spaced-label·
 # twilio-comment-only). 그 셋은 50-3 의 판정을 여기에 그대로 적는다. 50-3 이 못 보는 덕에 조용히
 # 지나가는 모양으로 두지 않는다.
-apiVersion: policypack/test-0.1
+apiVersion: policyofficer/test-0.1
 cases:
   # ── 문자·앱 푸시·메신저 (별표 6 그 밖의 전자적 전송매체 2.가·나) ─────────────
   - file: network-act-50-4/sms-no-disclosure.ts

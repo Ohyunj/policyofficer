@@ -329,7 +329,7 @@ def test_a_fixture_the_engine_cannot_read_is_rejected(tmp_path):
     (tmp_path / "v.mts").write_text("export const a = 1;\n", encoding="utf-8")
     suite = tmp_path / "t.test.yaml"
     suite.write_text(
-        "apiVersion: policypack/test-0.1\nrule: kr.pipa.22-2/signup-without-guard\n"
+        "apiVersion: policyofficer/test-0.1\nrule: kr.pipa.22-2/signup-without-guard\n"
         "cases:\n  - file: v.mts\n    expect: needs-review\n",
         encoding="utf-8",
     )
@@ -446,7 +446,7 @@ def test_a_fixture_that_is_not_utf8_is_rejected(tmp_path):
     (tmp_path / "v.ts").write_bytes(b"// caf\xe9\nexport const a = 1;\n")
     suite = tmp_path / "t.test.yaml"
     suite.write_text(
-        "apiVersion: policypack/test-0.1\nrule: kr.pipa.22-2/signup-without-guard\n"
+        "apiVersion: policyofficer/test-0.1\nrule: kr.pipa.22-2/signup-without-guard\n"
         "cases:\n  - file: v.ts\n    expect: needs-review\n",
         encoding="utf-8",
     )

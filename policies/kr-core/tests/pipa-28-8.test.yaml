@@ -1,5 +1,5 @@
 # yaml-language-server: $schema=../../../schemas/policy-test-0.1.json
-apiVersion: policypack/test-0.1
+apiVersion: policyofficer/test-0.1
 rule: kr.pipa.28-8/personal-data-to-overseas-ai
 cases:
   - file: pipa-28-8/openai-profile-summary.ts
