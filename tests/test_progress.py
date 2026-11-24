@@ -296,7 +296,8 @@ def test_a_terminal_stdout_gets_a_summary_and_the_json_goes_to_the_cache(tmp_pat
     doc = json.loads(files[0].read_text(encoding="utf-8"))
     assert out.startswith("✓ 검토 끝 · ") and "전체 결과(JSON): " in out and not out.lstrip().startswith("{")
     todo = sum(doc["summary"]["counts"][s] for s in ("seen-in-code", "check-outside", "check-applicability"))
-    assert len(re.findall(r"^(?:!!|  )[ \d]\d  ", out, re.M)) == todo - sum(c.get("group") == "goods" for c in doc["checklist"])
+    rows = re.findall(r"^(?:!!|  )[ \d]\d  ", out, re.M)  # 목록 줄(징역·과징금은 '!!'로 시작)
+    assert len(rows) == todo - sum(c.get("group") == "goods" for c in doc["checklist"])
     # --json 이면 터미널이어도 JSON
     monkeypatch.setattr(sys, "stdout", TtyOut())
     assert cli.main(["review", str(root), "--no-static", "--no-rebut", "--json"]) == 0
