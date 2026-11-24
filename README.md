@@ -1,4 +1,4 @@
-# policypack — 국내 법·정책 관점 코드 검토
+# policyofficer — 국내 법·정책 관점 코드 검토
 
 아주대학교 2026-2 자기주도프로젝트 · 플리트소프트 연계 과제. (개발 중)
 
@@ -72,17 +72,17 @@ compliant-if-any:            # 적법한 대안. 하나라도 참이면 경고�
 ## 설치
 
 아직 PyPI 에 올리지 않았다(계획상 14주차). 지금은 저장소에서 설치한다. semgrep 은 따로 설치하지 않는다.
-policypack 이 의존성으로 선언해 두어서 함께 깔린다.
+policyofficer 가 의존성으로 선언해 두어서 함께 깔린다.
 
 ```bash
-uv tool install .              # PATH 에는 policypack 명령 하나만 생긴다
+uv tool install .              # PATH 에는 policyofficer 명령 하나만 생긴다
 ```
 
 공개 뒤에는 이렇게 쓴다.
 
 ```bash
-uvx policypack scan --staged   # 설치 없이 한 번. uv 만 있으면 되고, Python 이 없으면 uv 가 받는다
-uv tool install policypack     # 또는 pipx install policypack
+uvx policyofficer scan --staged   # 설치 없이 한 번. uv 만 있으면 되고, Python 이 없으면 uv 가 받는다
+uv tool install policyofficer     # 또는 pipx install policyofficer
 ```
 
 전역 `pip install` 은 권하지 않는다. semgrep 이 의존성 몇 개를 좁게 고정해서(`click~=8.4.2`,
@@ -104,7 +104,7 @@ repos:
   - repo: <이 저장소 URL>
     rev: <태그>
     hooks:
-      - id: policypack
+      - id: policyofficer
 ```
 
 훅은 커밋하려는 JS/TS 파일을 `--` 뒤에 붙여 넘기고, 생성물 디렉터리(node_modules·dist 등)와 축소 번들은
@@ -113,14 +113,14 @@ repos:
 숨겨서, 무엇이 밖으로 나가는지 알리는 한 줄이 보이지 않는다.
 
 GitHub Actions 의 호스티드 러너에는 Python 과 pipx 가 이미 있다. PyPI 에 올리기 전에는 저장소에서
-설치한다. 이름만으로 설치하면(`pipx install policypack`) 아직 등록되지 않은 PyPI 이름을 찾게 되고,
+설치한다. 이름만으로 설치하면(`pipx install policyofficer`) 아직 등록되지 않은 PyPI 이름을 찾게 되고,
 누가 그 이름을 먼저 등록하면 남의 패키지가 저장소 권한을 가진 러너에서 돈다.
 
 ```yaml
 - uses: actions/checkout@v4
   with: { fetch-depth: 0 }
 - run: pipx install "git+<이 저장소 URL>@<태그>"
-- run: policypack scan --diff origin/main --output-format sarif > policypack.sarif
+- run: policyofficer scan --diff origin/main --output-format sarif > policyofficer.sarif
 ```
 
 GitLab 은 `--output-format gitlab` 으로 Code Quality 보고서를 낸다. 무료 판에서는 머지 요청 화면의 Code Quality
@@ -132,7 +132,7 @@ GitLab 은 `--output-format gitlab` 으로 Code Quality 보고서를 낸다. 무
 **Claude Code 훅.** Claude Code 가 JS/TS 파일을 고칠 때마다 그 파일을 검사하고, 확실한 '검토 필요'가 있으면
 경고와 개발자에게 할 질문을 Claude 에게 돌려주고 사용자 화면에 한 줄로 알린다. Claude 는 고칠 수 있는 것은 고치고, 사업상 판단이 필요한 것은
 사용자에게 묻는다. [`examples/claude-code-settings.json`](examples/claude-code-settings.json) 을 프로젝트의
-`.claude/settings.json` 에 합친다(`policypack` 이 PATH 에 있어야 한다).
+`.claude/settings.json` 에 합친다(`policyofficer` 가 PATH 에 있어야 한다).
 
 - 정적 조건만 쓴다. AI 를 부르지 않고 아무것도 밖으로 보내지 않는다. 한 파일에 1~2초다.
 - '불확실'만 있으면 알리지 않는다. 판정자 없이는 AI 에게 물을 곳이 모두 '불확실'이라 편집마다 끼어든다.
@@ -143,17 +143,17 @@ GitLab 은 `--output-format gitlab` 으로 Code Quality 보고서를 낸다. 무
 
 ```bash
 uv sync
-uv run policypack scan src/                       # 정적 조건만 (AI 호출 0회)
-uv run policypack scan src/ --output-format concise --explain  # 짧은 출력에 판정 경로 (full 은 늘 싣는다)
-uv run policypack scan src/ --output-format sarif # 근거 조문이 help.markdown 에 실린다
-uv run policypack scan --staged                    # 스테이징된 파일만 (커밋 전 훅)
-uv run policypack scan --diff origin/main          # 분기점 이후 이 브랜치가 바꾼 파일만 (CI)
-uv run policypack scan src/ --judge claude-cli:haiku  # 정적으로 결론이 안 난 곳만 AI 에게 묻는다(파일 하나씩)
-uv run policypack scan . --agent anthropic:claude-haiku-5-5 --agent-mode combined \
+uv run policyofficer scan src/                       # 정적 조건만 (AI 호출 0회)
+uv run policyofficer scan src/ --output-format concise --explain  # 짧은 출력에 판정 경로 (full 은 늘 싣는다)
+uv run policyofficer scan src/ --output-format sarif # 근거 조문이 help.markdown 에 실린다
+uv run policyofficer scan --staged                    # 스테이징된 파일만 (커밋 전 훅)
+uv run policyofficer scan --diff origin/main          # 분기점 이후 이 브랜치가 바꾼 파일만 (CI)
+uv run policyofficer scan src/ --judge claude-cli:haiku  # 정적으로 결론이 안 난 곳만 AI 에게 묻는다(파일 하나씩)
+uv run policyofficer scan . --agent anthropic:claude-haiku-5-5 --agent-mode combined \
     --agent-recheck anthropic:claude-sonnet-5-5   # 저장소 전체 검토(권장). 아래 "에이전트 검토"
-uv run policypack validate                        # 팩 문법·Semgrep 조건·조문 원문 해시·재검토 기한
-uv run policypack test --strict                   # 팩의 픽스처 (모델 호출 0회)
-uv run policypack doctor                          # 정적 백엔드 진단
+uv run policyofficer validate                        # 팩 문법·Semgrep 조건·조문 원문 해시·재검토 기한
+uv run policyofficer test --strict                   # 팩의 픽스처 (모델 호출 0회)
+uv run policyofficer doctor                          # 정적 백엔드 진단
 ```
 
 1MB 초과·축소 번들·읽을 수 없는 파일·엔진이 읽지 못하는 확장자·UTF-8 이 아닌 파일은 검사하지 않은 파일로
@@ -184,7 +184,7 @@ src/auth/signup.ts:12  검토 필요  만 14세 미만 아동의 개인정보 �
 
 내장 팩은 `policies/kr-core` 다. 정책 여섯(아동 동의, 야간 광고, 광고 표기, 생성형 AI 결과물 표시,
 생성형 AI 사전 고지, 개인정보를 국외 AI API 로 보내는 국외 이전)을 싣고, 패키지에 함께 실려 어느 저장소에서든 돈다. 다른 팩은 `--config` 로 준다.
-문법은 `schemas/policy-pack-0.4.json`(편집기 자동 완성용)과 `src/policypack/model.py` 가 정한다.
+문법은 `schemas/policy-pack-0.4.json`(편집기 자동 완성용)과 `src/policyofficer/model.py` 가 정한다.
 
 - **조문 추적성.** 정책마다 근거 조문을 적고, 조문 원문을 팩 안의 `_legal/` 에 커밋한 뒤 그 해시를
   `text-sha256` 에 적는다. 원문 파일이 바뀌면 `validate` 가 기록된 해시와 실제 해시를 함께 보여 준다.
@@ -247,11 +247,11 @@ src/auth/signup.ts:12  검토 필요  만 14세 미만 아동의 개인정보 �
 
 ## 라이선스와 배포
 
-policypack 은 **MIT** 다(LICENSE). 자세한 목록은 [NOTICE](NOTICE) 에 있다. 요점 넷.
+policyofficer 는 **MIT** 다(LICENSE). 자세한 목록은 [NOTICE](NOTICE) 에 있다. 요점 넷.
 
 - **엔진은 Semgrep CE 이고 LGPL-2.1 이다.** 우리는 링크하지 않고 별도 프로그램으로 부른다
   — 규칙을 임시 파일에 쓰고 `semgrep scan --config … --json` 을 실행해 표준 출력을 읽는다.
-  우리 배포물에는 Semgrep 코드·바이너리가 한 바이트도 없다. `pip install policypack` 이
+  우리 배포물에는 Semgrep 코드·바이너리가 한 바이트도 없다. `pip install policyofficer` 가
   `semgrep==1.176.*` 를 PyPI 에서 함께 받아 설치한다(엔진 바이너리가 그 휠 안에 있다.
   플랫폼과 크기는 위 "설치" 절).
 - **규칙은 전부 저자가 썼다.** Semgrep Registry 규칙은 한 건도 싣지 않고 실행 중에 받아
@@ -352,24 +352,24 @@ Opengrep(Semgrep CE 의 LGPL-2.1 포크)으로 갈아탈 수도 있다. 라이�
 
 | 경로 | 내용 |
 |---|---|
-| `src/policypack/` | 제품 코드 |
+| `src/policyofficer/` | 제품 코드 |
 | `policies/kr-core/` | 내장 정책 팩, 조문 원문(`_legal/`), 픽스처(`tests/`) |
-| `schemas/` | 정책 팩·테스트 파일의 JSON Schema (`policypack schema --write` 가 만든다)와 scan 보고서의 스키마(`report-1.json`, 손으로 쓴다. [docs/output.md](docs/output.md)) |
+| `schemas/` | 정책 팩·테스트 파일의 JSON Schema (`policyofficer schema --write` 가 만든다)와 scan 보고서의 스키마(`report-1.json`, 손으로 쓴다. [docs/output.md](docs/output.md)) |
 | `tests/` | pytest |
 | `examples/` | GitLab CI 작업 정의, Claude Code 훅 설정 |
 | `scripts/` | 보고서에서 운영 지표(인용 관문 거절, 가린 비밀값, 비용)를 모으는 `metrics.py` |
 | `docs/` | 방향, 구조, 일정, 결정 기록, 국내 법 의무 지도, 보고서 위치 ([docs/README.md](docs/README.md)) |
 
 9/29 이전의 측정·연구 기록은 태그 `archive/research-2026-09-29` 에, 접은 정확도 실험의 설계는 태그
-`eval-freeze-2026-11-03` 에 남아 있다. 결과를 보여 주는 웹 서비스는 별도 저장소(`Plitsoft-SDP-Web`)다.
+`eval-freeze-2026-11-03` 에 남아 있다. 결과를 보여 주는 웹 서비스는 별도 저장소(`policyofficer-web`)다.
 
 ## 자주 묻는 것
 
-**semgrep 을 먼저 설치해야 하나요?** 아니요. policypack 을 설치하면 함께 깔립니다. 이미 다른
-semgrep 이 있어도 policypack 은 함께 설치된 판을 씁니다.
+**semgrep 을 먼저 설치해야 하나요?** 아니요. policyofficer 를 설치하면 함께 깔립니다. 이미 다른
+semgrep 이 있어도 policyofficer 는 함께 설치된 판을 씁니다.
 
 **Semgrep 계정이나 로그인이 필요한가요? 로그인해 두면 코드가 나가나요?** 필요 없습니다.
-로그인해 두었어도 policypack 은 그 설정을 읽지 않습니다. 연결 시도가 0건인 것을 시험으로 확인합니다.
+로그인해 두었어도 policyofficer 는 그 설정을 읽지 않습니다. 연결 시도가 0건인 것을 시험으로 확인합니다.
 
 **왜 Semgrep 공식 규칙을 쓰지 않나요?** Semgrep Rules License 가 규칙의 배포와 서비스 제공을
 금지하기 때문입니다. 엔진이 아니라 규칙에 붙은 조건이라 어느 엔진을 써도 같습니다. 이 도구의

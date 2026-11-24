@@ -2,7 +2,7 @@
 
 제품 사용법은 저장소 맨 위 [README](../README.md) 에 있다. 이 폴더는 **어디로 가는지와 왜 그렇게 정했는지**를 적는다.
 2026-10-24 에 방향을 "AI 중심 법 검토"(방향 A)로 정하면서 새로 만들었다. 정확도 실험을 접은 까닭은
-[decisions/0004](decisions/0004-no-accuracy-experiment.md) 에 있다. 웹 서비스는 별도 저장소(`Plitsoft-SDP-Web`)에서 만든다.
+[decisions/0004](decisions/0004-no-accuracy-experiment.md) 에 있다. 웹 서비스는 별도 저장소(`policyofficer-web`)에서 만든다.
 
 | 문서 | 내용 | 언제 고치나 |
 |---|---|---|

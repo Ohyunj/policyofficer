@@ -38,7 +38,7 @@
   거절 3개, 가린 비밀값 17개(google-key 5, secret-value 12), 읽은 파일 199개, 모델 호출 574회, 어림 $3.41
   (`~/.cache/policypack-eval/agent-dev-2026-11-03/M4c2-haiku/`).
 - 11/10: 웹 인계 판을 원격에 올림(가지 `interim-report-f1-evaluation`, 태그 `handoff-w11`).
-- 13주 앞당김(11/10): Claude Code 훅(`policypack hook claude-code`), GitLab Code Quality 출력(`--output-format gitlab`)과
+- 13주 앞당김(11/10): Claude Code 훅(`policyofficer hook claude-code`), GitLab Code Quality 출력(`--output-format gitlab`)과
   작업 정의(`examples/`). 남은 것은 훅 시연 녹화, GitLab 에서 실제로 돌려 보기, 도구 판 태그.
 
 ## 매주
@@ -48,5 +48,5 @@
 
 ## 미루는 것
 
-자체 파서·데이터 흐름 엔진, 정책 대량 추가, 해외 법 팩. 웹 서비스는 별도 저장소(`Plitsoft-SDP-Web`)에서 만들고,
+자체 파서·데이터 흐름 엔진, 정책 대량 추가, 해외 법 팩. 웹 서비스는 별도 저장소(`policyofficer-web`)에서 만들고,
 이 저장소는 웹이 읽는 JSON 출력을 책임진다.

@@ -1,17 +1,17 @@
-policypack
+policyofficer
 Copyright (c) 2026 Seunghyun Yuk
 MIT License (see LICENSE)
 
-이 파일은 policypack 이 무엇에 기대어 도는지, 그리고 그것들이 어떤 라이선스인지 적는다.
+이 파일은 policyofficer 가 무엇에 기대어 도는지, 그리고 그것들이 어떤 라이선스인지 적는다.
 기업이 도입을 검토할 때 가장 먼저 찾는 것이 이 목록이다.
 
 
 1. 정적 분석 엔진 — Semgrep CE
 ────────────────────────────────────────────────────────────────────────────
-policypack 은 Semgrep Community Edition 을 **별도의 프로그램으로 실행**한다.
+policyofficer 는 Semgrep Community Edition 을 **별도의 프로그램으로 실행**한다.
 라이브러리로 링크하지 않는다. 우리가 만든 규칙을 임시 파일에 쓰고
 `semgrep scan --config <파일> --json ...` 을 서브프로세스로 부른 뒤 표준 출력의 JSON 을
-읽는다(src/policypack/static/semgrep_cli.py).
+읽는다(src/policyofficer/static/semgrep_cli.py).
 
   이름     Semgrep CE
   저작권   Semgrep, Inc.
@@ -19,14 +19,14 @@ policypack 은 Semgrep Community Edition 을 **별도의 프로그램으로 실�
   받는 곳  PyPI (https://pypi.org/project/semgrep/) — pip 가 설치 시점에 직접 받는다
   원문     https://github.com/semgrep/semgrep/blob/develop/LICENSE
 
-**policypack 의 배포물에는 Semgrep 의 코드나 바이너리가 들어 있지 않다.** 우리 휠은
+**policyofficer 의 배포물에는 Semgrep 의 코드나 바이너리가 들어 있지 않다.** 우리 휠은
 `semgrep==1.176.*` 를 의존성으로 선언할 뿐이고, 사용자의 기계에서 pip 가 PyPI 에서 받아
 설치한다. 따라서 우리는 LGPL 저작물을 재배포하지 않는다.
 
 
 2. 규칙 — 전부 자체 작성
 ────────────────────────────────────────────────────────────────────────────
-policypack 이 싣고 실행하는 규칙은 모두 이 저장소의 저자가 썼다.
+policyofficer 가 싣고 실행하는 규칙은 모두 이 저장소의 저자가 썼다.
 
   policies/kr-core/pack.yaml            법 조항 정책 팩
 
@@ -90,6 +90,6 @@ PyInstaller 단일 실행 파일, 오프라인 설치본, 사내 미러, wheelho
 
 6. 이름
 ────────────────────────────────────────────────────────────────────────────
-Semgrep 은 Semgrep, Inc. 의 상표다. policypack 은 Semgrep 의 제품이 아니고 후원·보증을 받지
+Semgrep 은 Semgrep, Inc. 의 상표다. policyofficer 는 Semgrep 의 제품이 아니고 후원·보증을 받지
 않는다. 이 저장소에서 Semgrep 을 언급하는 것은 "무엇 위에서 도는가"를 밝히는 기술적 사실
 기술이다. 제품명·로고·패키지 이름에는 쓰지 않는다.

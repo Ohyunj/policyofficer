@@ -1,6 +1,6 @@
 # 출력 계약 — scan 의 JSON 보고서
 
-웹 서비스(`Plitsoft-SDP-Web`)와 CI 가 읽는 `policypack scan --output-format json` 의 약속이다. SARIF·GitLab Code
+웹 서비스(`policyofficer-web`)와 CI 가 읽는 `policyofficer scan --output-format json` 의 약속이다. SARIF·GitLab Code
 Quality(`--output-format gitlab`)는 그 형식의 규격을 따르고, 지문은 셋이 같은 값이다.
 스키마는 [`schemas/report-1.json`](../schemas/report-1.json)(JSON Schema 2020-12)이고, `tests/test_report_schema.py` 가
 실제 보고서(판정자 없음, 판정자가 푼 것·뺀 것, 에이전트 세 방식, 서비스에 닿지 못한 에이전트)로 검사한다.
@@ -102,7 +102,7 @@ Quality(`--output-format gitlab`)는 그 형식의 규격을 따르고, 지문�
 - 독립 검토(`independent`)에는 정적 판정이 없다. 답을 받지 못한 정책이 있으면 경고가 없어도 종료 코드가 1 이다
   (`--fail-on uncertain`, 기본).
 
-## 저장소 프로필(`policypack profile <폴더>`, 11/11 부터)
+## 저장소 프로필(`policyofficer profile <폴더>`, 11/11 부터)
 
 모델을 부르지 않는다. 저장소가 하는 일(기능)과 그 기능에 걸릴 수 있는 의무를 낸다. 판단은 하지 않는다(목록 층).
 `profile_version` 은 1 이고 위 보고서와 같은 판 규칙(키를 더할 때는 그대로)을 따른다.
@@ -119,10 +119,10 @@ Quality(`--output-format gitlab`)는 그 형식의 규격을 따르고, 지문�
 | `platforms` | web·mobile·server. 모바일 앱 틀(react-native·expo 등)만 있으면 화면 파일이 있어도 웹이 아니어서 `web-ui` 기능이 없다 |
 | `goods[]` | 특정 품목(주류·도서·안경·전기용품·농수산물·청소년유해약물)의 신호(경로 낱말, 소스 글의 낱말 `word`)와 그 품목에만 걸리는 의무 id(`duties`). 11/12 부터 |
 
-기능과 신호는 `src/policypack/profile/features.yaml`, 기능–의무 표는 `src/policypack/profile/duties.jsonl`(만드는 법은
+기능과 신호는 `src/policyofficer/profile/features.yaml`, 기능–의무 표는 `src/policyofficer/profile/duties.jsonl`(만드는 법은
 `scripts/lawmap_table.py`)에 있다.
 
-## 저장소 검토(`policypack review <폴더>`, 11/11 부터)
+## 저장소 검토(`policyofficer review <폴더>`, 11/11 부터)
 
 스키마는 [`schemas/review-2.json`](../schemas/review-2.json), `review_version` 은 2 다(1 에서 '확인할 것'을 세 갈래로 나누고
 부재 증명을 더해 판을 올렸다. 키를 더할 때는 그대로).
@@ -136,11 +136,11 @@ Quality(`--output-format gitlab`)는 그 형식의 규격을 따르고, 지문�
 
 어디로 나가는지(11/24 부터): stdout 이 터미널이 아니면(웹 실행기, 파이프, 파일) 전과 같은 JSON 이다. 터미널이면 JSON
 대신 사람이 읽는 요약(상태별 수, '확인할 것' 목록과 인용, 걸린 시간, 어림 금액)을 내고 JSON 은
-`${XDG_CACHE_HOME:-~/.cache}/policypack/reviews/<저장소>-<커밋 12자>.json` 에 둔다(분석하는 저장소에는 쓰지 않는다).
+`${XDG_CACHE_HOME:-~/.cache}/policyofficer/reviews/<저장소>-<커밋 12자>.json` 에 둔다(분석하는 저장소에는 쓰지 않는다).
 `-o FILE` 은 JSON 을 그 파일에도 쓰고, `--json` 은 터미널이어도 stdout 에 JSON 을 낸다. 진행은 stderr 에 그린다
 (`--progress auto|tty|plain|none`, 기본 auto): stderr 가 터미널이고 CI 가 아니고 TERM 이 dumb 가 아니면 제자리에서 다시
 그리고(tty), 그 밖에는 사건마다 `[mm:ss] …` 한 줄이고 제어 문자가 없다(plain). `NO_COLOR` 는 색만 끈다. Ctrl+C 는 멈춘
-곳 한 줄을 남기고 130 으로 끝난다. `policypack replay <결과.json> [--speed N]`(기본 4배)은 저장된 결과의 질문 기록으로
+곳 한 줄을 남기고 130 으로 끝난다. `policyofficer replay <결과.json> [--speed N]`(기본 4배)은 저장된 결과의 질문 기록으로
 같은 진행 화면을 다시 그린다(모델·네트워크 호출 0회).
 
 | 키 | 뜻 |
@@ -153,7 +153,7 @@ Quality(`--output-format gitlab`)는 그 형식의 규격을 따르고, 지문�
 | `first`·`verification` 의 덧붙임(11/12) | 답이 적은 걸리는 조건 `applies`(예·아니오·모름)·`condition`, 없는 것 `missing`, 충족 인용의 성격 `shows`(행위·이름·기본값), 관문이 답을 바꾼 까닭 `gate`(`why`: condition-present · no-condition · name-or-default · audience · missing-check · applies-unknown · free-input · other-side · prohibition · same-model, `note` 는 `reason` 앞에도 붙는다). '해당 없음'의 근거 `basis`(처리 없음·확인 장치 없음, 같은 날 덧붙임). 걸리는 조건을 본 곳 `trigger`(입력란·처리·저장 · 자유 입력 추측, 11/13 덧붙임). `shows` 의 `금지 행위` 는 금지 의무(의무 표의 `prohibition`)에서 금지된 행위 자체를, `빈틈` 은 '코드에서 본 것'의 인용이 빈틈 자체(상수로 고정된 로그인 검사, 평문 저장 등)를 보인다는 표시다. 반박의 뒤집기는 자유 입력 관문이 옮긴 항목이면 그 정보를 받는 입력란·필드·저장의 인용(applies 예)이, 금지 의무면 금지 행위의 인용이 있어야 받고, 조사와 반박이 같은 모델이면 '충족'으로 올리는 뒤집기는 받지 않는다(`gate` same-model). '충족'이라 답할 때 적는 남은 부족한 점 `remaining`(없으면 '없음', 11/15 덧붙임)이 있으면 '코드에서 본 것'이다(`gate` remaining-gap). '금지 행위'·'빈틈' 표시는 관문을 통과한 인용이 있을 때만 받는다. 인용의 `why` 가 `profile` 이면 모델의 인용이 아니라 기능이 있다는 프로필 신호(걸리는 조건의 근거)다. `config-value` 면 설정 파일의 줄이지만 주소·호스트 값이 있어 받은 인용이다 |
 | `run` | 모델, 반박을 물었는지(`rebut`, false 면 `models.verify` 는 none 이고 반박할 항목은 not-run why rebut-off), 반박할 항목(`rebut_scope`: all · found, found 면 나머지는 not-run why rebut-scope), 묶음(`batch`: duty · feature · bundle), 저장소에 없는 쪽(`lacks`: screen 이면 서버만, server 면 화면만), 상한, 시간, 호출 수, 사용량, 어림 금액(공식 단가를 호출마다 매겨 더한 값), 상태·반박 결과별 수, 인용과 관문이 거절한 수, 검색과 다시 돌려 맞지 않은 수, 못 물은 의무(`not_asked`), 가린 비밀값, 읽지 않은 비밀 파일, 질문마다의 기록 |
 
-`sanction`(11/24): 의무별 제재 표(`src/policypack/profile/sanctions.jsonl`, AI 검토가 묻는 의무 220개와 1:1)의 레코드에서
+`sanction`(11/24): 의무별 제재 표(`src/policyofficer/profile/sanctions.jsonl`, AI 검토가 묻는 의무 220개와 1:1)의 레코드에서
 `duty` 를 뺀 것이다. 등급 `class` 는 무거운 순서로 징역 > 과징금 > 벌금 > 과태료 > 명령(시정명령 등을 어겨야 제재) >
 없음이고 AI 판단이 아니라 법령 원문의 벌칙·과징금·과태료 조문으로 정했다. `label` 은 표지에 쓰는 짧은 말(화면에는
 `어기면 · {label}`), `max_won` 은 같은 등급 안의 정렬에 쓰는 정액 상한(원), `items[]` 는 조문마다 `kind`·`via`(direct ·
