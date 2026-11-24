@@ -7,6 +7,7 @@ import io
 import json
 import os
 import re
+import socket
 import struct
 import sys
 import termios
@@ -22,6 +23,7 @@ from policypack.judge.fake import review_transport
 from policypack.report import progress
 from policypack.report.review_text import render
 from policypack.review import events as E
+from policypack.review.prompts import STATUS_LABEL
 
 FILES = {
     "package.json": json.dumps({"dependencies": {"express": "^4.0.0"}}),
@@ -244,6 +246,36 @@ def test_a_failing_worker_stops_the_rest_from_starting():
     threading.Event().wait(0.2)
     assert len(started) < 10
     assert rv.parallel(lambda i: i * 2, [3, 1, 2], 2) == [6, 2, 4]
+
+
+def test_replay_draws_without_the_network_and_counts_match(tmp_path, monkeypatch, capsys, fake_judges):
+    root = _repo(tmp_path)
+    assert cli.main(["review", str(root), "--no-static", "-o", str(tmp_path / "r.json")]) == 0
+    saved = json.loads((tmp_path / "r.json").read_text(encoding="utf-8"))
+    assert json.loads(capsys.readouterr().out) == saved  # -o 는 파일에도 쓴다
+
+    def no_network(*a, **kw):
+        raise AssertionError("기록 재생이 네트워크를 불렀다")
+
+    monkeypatch.setattr(socket, "socket", no_network)
+    monkeypatch.setattr(socket, "create_connection", no_network)
+    monkeypatch.setattr("urllib.request.urlopen", no_network)
+    assert cli.main(["replay", str(tmp_path / "r.json"), "--speed", "1000"]) == 0
+    out, err = capsys.readouterr()
+    assert "\x1b" not in out + err
+    assert err.splitlines()[0].startswith("기록 재생 · 모델 호출 없음 · 원래 ")
+    shown = {}
+    for line in out.splitlines():
+        for status, label in STATUS_LABEL.items():
+            m = re.fullmatch(rf"  {re.escape(label)}\s+(\d+)", line)
+            if m:
+                shown[status] = int(m.group(1))
+    assert shown == {s: n for s, n in saved["summary"]["counts"].items() if n}
+    n = len(saved["run"]["questions"])
+    assert f"질문 {n}개" in out.splitlines()[0]
+    # 같은 사건: 질문마다 보냄·끝이 한 줄씩
+    assert sum("보냄 · " in ln for ln in err.splitlines()) == n
+    assert sum(re.search(r"질문 \d+ 끝 · ", ln) is not None for ln in err.splitlines()) == n
 
 
 def test_a_terminal_stdout_gets_a_summary_and_the_json_goes_to_the_cache(tmp_path, monkeypatch, fake_judges):

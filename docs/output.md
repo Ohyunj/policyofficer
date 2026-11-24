@@ -106,6 +106,15 @@ Quality(`--output-format gitlab`)는 그 형식의 규격을 따르고, 지문�
 나간다(비밀값은 가리고 .env 등은 읽지 않는다). `--plan` 은 모델 없이 물을 의무와 질문 수만 낸다. `--reuse <앞 결과>` 는
 같은 저장소·커밋의 앞 결과에서 이해 단계(요약·기능·개인정보 흐름)를 되살려 묻지 않는다(인용은 관문에 다시 건다).
 
+어디로 나가는지(11/24 부터): stdout 이 터미널이 아니면(웹 실행기, 파이프, 파일) 전과 같은 JSON 이다. 터미널이면 JSON
+대신 사람이 읽는 요약(상태별 수, '확인할 것' 목록과 인용, 걸린 시간, 어림 금액)을 내고 JSON 은
+`${XDG_CACHE_HOME:-~/.cache}/policypack/reviews/<저장소>-<커밋 12자>.json` 에 둔다(분석하는 저장소에는 쓰지 않는다).
+`-o FILE` 은 JSON 을 그 파일에도 쓰고, `--json` 은 터미널이어도 stdout 에 JSON 을 낸다. 진행은 stderr 에 그린다
+(`--progress auto|tty|plain|none`, 기본 auto): stderr 가 터미널이고 CI 가 아니고 TERM 이 dumb 가 아니면 제자리에서 다시
+그리고(tty), 그 밖에는 사건마다 `[mm:ss] …` 한 줄이고 제어 문자가 없다(plain). `NO_COLOR` 는 색만 끈다. Ctrl+C 는 멈춘
+곳 한 줄을 남기고 130 으로 끝난다. `policypack replay <결과.json> [--speed N]`(기본 4배)은 저장된 결과의 질문 기록으로
+같은 진행 화면을 다시 그린다(모델·네트워크 호출 0회).
+
 | 키 | 뜻 |
 |---|---|
 | `summary` | 체크리스트의 갈래별 수(`counts`), 갈래 이름(`labels`), 맨 위 다섯 건의 의무 id(`top`), 한 줄로 묶어 보일 항목(`groups`: 품목 신호가 없어 묻지 않은 품목 의무, `id` goods) |
