@@ -116,7 +116,7 @@ def test_json_report_tells_cleared_units_from_units_that_never_applied(capsys):
     doc = json.loads(capsys.readouterr().out)
     assert doc["schema_version"] == 1
     r = doc["run"]
-    assert r["fingerprint_version"] == "policypack/v1"
+    assert r["fingerprint_version"] == "policyofficer/v1"
     assert r["questions_skipped"] == 0
     assert COMPLIANT in {c["file"] for c in r["static_cleared"]}, "픽스처의 연령 분기가 있는 가입 코드"
     assert r["units"] == len(doc["findings"]) + len(r["ai_cleared"]) + len(r["static_cleared"])
@@ -164,7 +164,7 @@ def test_sarif_shape(sarif):
     assert sarif["version"] == "2.1.0"
     assert sarif["$schema"].endswith("sarif-2.1.0.json")
     run_ = sarif["runs"][0]
-    assert run_["tool"]["driver"]["name"] == "policypack"
+    assert run_["tool"]["driver"]["name"] == "policyofficer"
     assert run_["results"], "판정이 하나는 있어야 한다"
 
 
@@ -477,7 +477,7 @@ def test_sarif_reports_coverage_gaps(tmp_path, monkeypatch, capsys):
     assert inv["properties"]["coverageComplete"] is False
     notes = inv["toolExecutionNotifications"]
     # 파싱하지 못해 적용이 '모름'인 규칙은 AI 에게 물어야 하는데 판정자가 없다. 그것도 함께 알린다
-    assert [n["descriptor"]["id"] for n in notes] == ["policypack/unparsed", "policypack/ai-pending"]
+    assert [n["descriptor"]["id"] for n in notes] == ["policyofficer/unparsed", "policyofficer/ai-pending"]
     assert notes[0]["locations"][0]["physicalLocation"]["artifactLocation"]["uri"] == "broken.ts"
 
 

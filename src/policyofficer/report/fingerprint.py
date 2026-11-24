@@ -19,7 +19,7 @@ from policyofficer.report.paths import rel
 
 _WS = re.compile(r"\s+")
 
-VERSION = "policypack/v1"
+VERSION = "policyofficer/v1"
 
 
 def _snippet(path: Path, line: int | None, span: int = 2) -> str:

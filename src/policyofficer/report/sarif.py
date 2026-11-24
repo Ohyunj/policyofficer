@@ -96,7 +96,7 @@ def _statute_text(ref: LegalRef, base: Path) -> str:
 
 
 def _tags(policy: Policy) -> list[str]:
-    tags = ["policypack", f"category:{policy.category}"]
+    tags = ["policyofficer", f"category:{policy.category}"]
     for ref in policy.legal.violated_when_failed if policy.legal else []:
         tags.append(f"law:{ref.statute}-{ref.article}")
     # 한 조의 두 항을 고정하면 같은 태그가 둘 나온다. 날짜는 태그로 내지 않는다 — 어느 조문의 날짜인지 묶을 수 없다
@@ -136,7 +136,7 @@ def build(
             {
                 "tool": {
                     "driver": {
-                        "name": "policypack",
+                        "name": "policyofficer",
                         "version": __version__,
                         "rules": rules,
                     },
@@ -198,7 +198,7 @@ def _gaps(result: EvalResult, root: Path | None) -> list[dict]:
     def note(kind: str, path: str, text: str) -> dict:
         return {
             "level": "warning",
-            "descriptor": {"id": f"policypack/{kind}"},
+            "descriptor": {"id": f"policyofficer/{kind}"},
             "message": {"text": text},
             "locations": [{"physicalLocation": {"artifactLocation": {"uri": _uri(path, root)}}}],
         }
@@ -214,13 +214,13 @@ def _gaps(result: EvalResult, root: Path | None) -> list[dict]:
         out.append(
             {
                 "level": "note",
-                "descriptor": {"id": "policypack/ai-pending"},
+                "descriptor": {"id": "policyofficer/ai-pending"},
                 "message": {"text": pending_note(result) + "."},
             }
         )
     # 어느 파일인지 모르는 엔진 오류. 위치 없이 알린다
     out += [
-        {"level": "warning", "descriptor": {"id": "policypack/engine-error"}, "message": {"text": text}}
+        {"level": "warning", "descriptor": {"id": "policyofficer/engine-error"}, "message": {"text": text}}
         for text in result.engine_errors
     ]
     return out

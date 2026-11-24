@@ -388,7 +388,7 @@ def profile(root: Path) -> dict:
     service_features = [f for f in found if f["id"] not in PLATFORM]
     out = {
         "profile_version": PROFILE_VERSION,
-        "tool": {"name": "policypack", "version": __version__},
+        "tool": {"name": "policyofficer", "version": __version__},
         "files": counts,
         "platforms": plats,
         "service_features": len(service_features),

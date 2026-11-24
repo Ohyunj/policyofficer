@@ -28,7 +28,7 @@ def build(result: EvalResult, root: Path | None = None, pack_digest: str = "", m
     service = sum(r in SERVICE for r in roles)
     return {
         "schema_version": SCHEMA_VERSION,
-        "tool": {"name": "policypack", "version": __version__},
+        "tool": {"name": "policyofficer", "version": __version__},
         "run": {
             "judge": result.judge_id or None,
             "pack_digest": pack_digest,

@@ -97,7 +97,7 @@ def build(run: TestRun, root, pack_id: str, pack_digest: str) -> dict:
     declared = [r for r in run.rows if r.declared]
     return {
         "schema_version": SCHEMA_VERSION,
-        "tool": {"name": "policypack", "version": __version__},
+        "tool": {"name": "policyofficer", "version": __version__},
         "run": {
             "command": "test",
             "pack": pack_id,

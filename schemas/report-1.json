@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/plitsoft/policypack/schemas/report-1.json",
-  "title": "policypack scan 보고서 (schema_version 1)",
-  "description": "policypack scan --output-format json 의 출력. 같은 schema_version 안에서 키가 늘 수 있다(받는 쪽은 모르는 키를 무시한다). 있던 키가 없어지거나 뜻이 바뀌면 schema_version 을 올린다. 파일 경로는 검사 루트(git 저장소면 그 뿌리)에서의 상대 경로다.",
+  "$id": "https://github.com/minhowow/policyofficer/schemas/report-1.json",
+  "title": "policyofficer scan 보고서 (schema_version 1)",
+  "description": "policyofficer scan --output-format json 의 출력. 같은 schema_version 안에서 키가 늘 수 있다(받는 쪽은 모르는 키를 무시한다). 있던 키가 없어지거나 뜻이 바뀌면 schema_version 을 올린다. 파일 경로는 검사 루트(git 저장소면 그 뿌리)에서의 상대 경로다.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -19,7 +19,7 @@
       "type": "object",
       "properties": {
         "name": {
-          "const": "policypack"
+          "const": "policyofficer"
         },
         "version": {
           "type": "string"

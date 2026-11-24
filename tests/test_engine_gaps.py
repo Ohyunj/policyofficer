@@ -92,9 +92,9 @@ def test_sarif_names_engine_errors_and_unfinished_files(monkeypatch, capsys):
     main(["scan", CASE, "--output-format", "sarif", "--no-color"])
     notes = json.loads(capsys.readouterr().out)["runs"][0]["invocations"][0]["toolExecutionNotifications"]
     kinds = {n["descriptor"]["id"] for n in notes}
-    assert {"policypack/engine-error", "policypack/engine-incomplete"} <= kinds
-    assert "policypack/unparsed" not in kinds  # 파일 문법 문제로 적지 않는다
-    engine_error = next(n for n in notes if n["descriptor"]["id"] == "policypack/engine-error")
+    assert {"policyofficer/engine-error", "policyofficer/engine-incomplete"} <= kinds
+    assert "policyofficer/unparsed" not in kinds  # 파일 문법 문제로 적지 않는다
+    engine_error = next(n for n in notes if n["descriptor"]["id"] == "policyofficer/engine-error")
     assert "locations" not in engine_error and "OOM" in engine_error["message"]["text"]
 
 

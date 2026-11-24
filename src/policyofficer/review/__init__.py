@@ -1460,7 +1460,7 @@ def _report(run: Run, prof, und, features, listed, checklist, static, static_err
             not_asked[c["not_answered"]] = not_asked.get(c["not_answered"], 0) + 1
     return {
         "review_version": REVIEW_VERSION,
-        "tool": {"name": "policypack", "version": __version__},
+        "tool": {"name": "policyofficer", "version": __version__},
         "summary": {
             "counts": counts,
             "labels": P.STATUS_LABEL,

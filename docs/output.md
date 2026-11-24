@@ -11,6 +11,31 @@ Quality(`--output-format gitlab`)는 그 형식의 규격을 따르고, 지문�
 - 11주 두 번째 인계(11/11): 태그 `handoff-w11-2`(가지 `main`). 발견마다 파일 역할을 싣고(아래), 배열·라우터의 `push`
   를 광고 발송으로 세지 않는다. `handoff-w11` 에 키를 더하기만 했다.
 - 13주에 도구 판 태그(`v0.4.0`)를 따로 단다. 그 전까지 웹은 `handoff-w11-2` 를 고정한다.
+- 13주 세 번째 인계(11/24): 태그 `handoff-w13-3`. 제품 이름이 바뀌었다(아래 '이름 바꾸기').
+
+## 이름 바꾸기 (`handoff-w13-3`, 2026-11-24)
+
+제품 이름을 policypack 에서 policyofficer 로 바꿨다(오너 결정). 옛 이름의 별칭(옛 명령·옛 값)은 두지 않는다.
+키 이름은 그대로이고 값만 바뀌었다. SARIF 의 `partialFingerprints` 만 키가 바뀌는데, 그 키가 지문 방식의 이름이라서다.
+
+| 무엇 | 전 | 후 |
+|---|---|---|
+| 설치 이름(배포 이름) | `policypack` | `policyofficer` (예: `policyofficer @ git+https://github.com/minhowow/policyofficer@<커밋>`) |
+| 명령 | `policypack <명령>` | `policyofficer <명령>`. `--version` 의 첫 낱말도 `policyofficer` |
+| scan·profile·review·test 의 JSON `tool.name` | `"policypack"` | `"policyofficer"` |
+| scan JSON `run.fingerprint_version` | `"policypack/v1"` | `"policyofficer/v1"` |
+| SARIF `runs[].tool.driver.name` | `"policypack"` | `"policyofficer"` |
+| SARIF `rules[].properties.tags` 의 첫 값 | `"policypack"` | `"policyofficer"` |
+| SARIF `results[].partialFingerprints` 의 키 | `"policypack/v1"` | `"policyofficer/v1"` |
+| SARIF 알림 `toolExecutionNotifications[].descriptor.id` | `policypack/unparsed`·`policypack/skipped`·`policypack/engine-incomplete`·`policypack/engine-error`·`policypack/ai-pending` | 앞만 `policyofficer/` 로(뒤는 같다) |
+| 결과 스키마의 `$id` | `https://github.com/plitsoft/policypack/schemas/report-1.json`, `https://policypack.dev/schemas/review-2.json` | `https://github.com/minhowow/policyofficer/schemas/report-1.json`, `https://github.com/minhowow/policyofficer/schemas/review-2.json` |
+| 결과 스키마 `tool.name` 의 `const` | `"policypack"` | `"policyofficer"` |
+| review 결과를 두는 곳(stdout 이 터미널일 때) | `${XDG_CACHE_HOME:-~/.cache}/policypack/reviews/` | `${XDG_CACHE_HOME:-~/.cache}/policyofficer/reviews/` |
+| 소스 안의 표 경로 | `src/policypack/profile/{duties.jsonl,features.yaml,sanctions.jsonl}` | `src/policyofficer/profile/…` |
+
+- **지문 값은 모두 바뀐다.** 지문(`findings[].fingerprint`, SARIF `partialFingerprints`, GitLab `fingerprint`)은 방식
+  이름과 팩 파일의 해시(`run.pack` 의 digest)를 넣어 만든다. 둘 다 바뀌었으므로 이 판 앞뒤의 지문은 서로 견주지 않는다.
+- GitLab Code Quality 보고서에는 도구 이름이 없다(`check_name` 은 `<정책>/<규칙>`). 지문 값만 바뀐다.
 
 ## 판 올리기
 
