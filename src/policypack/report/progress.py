@@ -174,7 +174,7 @@ class Glyphs:
             setattr(self, k, v)
 
 
-SGR = {"bold": "1", "dim": "2", "ok": "32", "run": "36", "warn": "33", "fail": "31"}
+SGR = {"bold": "1", "dim": "2", "ok": "32", "run": "36", "warn": "33", "fail": "31", "heavy": "1;31"}
 
 
 def clock(seconds: float) -> str:

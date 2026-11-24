@@ -1009,6 +1009,10 @@ def cmd_replay(args) -> int:
         raise ConfigError(f"review 결과가 아닙니다(checklist·run 이 없음): {args.file}")
     if not args.speed > 0:
         raise ConfigError("--speed 는 0 보다 커야 합니다")
+    from policypack.review import with_sanction
+
+    for c in doc["checklist"]:
+        with_sanction(c)  # 제재 표보다 앞선 결과도 의무 id 로 붙여 보인다
     begin, events = replay.timeline(doc)
     begin = dataclasses.replace(begin, repo=path.stem)
     total = float(doc["run"].get("seconds") or 0.0)

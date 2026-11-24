@@ -3,6 +3,10 @@
 상태별 개수, '확인할 것' 목록(법·조문·제목·인용 file:line), 걸린 시간, 어림 금액, 저장한 JSON 의 경로. 목록은 갈래
 (코드에서 본 것 → 저장소 밖 → 해당 여부) 안에서 제재 등급 순(SANCTION_ORDER), 같은 등급이면 정액 상한(max_won)이 큰
 것이 먼저다. 항목에 제재(sanction)가 없으면 체크리스트 순서(rank) 그대로다.
+
+제재가 있으면 줄 끝에 "어기면 · {label}"을 붙이고(어느 줄이든 제목이 TITLE_MIN 칸보다 좁아지면 모두 다음 줄로
+내린다), 징역·과징금은 강조한다. 색이 없어도 알아보게 번호 앞에 "!!"를 붙인다. 주의 문구(SANCTION_NOTE)는 요약
+아래에 한 번 둔다.
 """
 
 from __future__ import annotations
@@ -10,13 +14,17 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from policypack.report.progress import SGR, Glyphs, article, clean, clock, fit, fit_tail, pad, title, width
+from policypack.report.progress import SGR, Glyphs, article, clean, clock, fit, fit_tail, pad, title, width, wrap
 from policypack.review.prompts import ORDER, STATUS_LABEL
 
 TO_CHECK = ("seen-in-code", "check-outside", "check-applicability")
 SANCTION_ORDER = ("징역", "과징금", "벌금", "과태료", "명령", "없음")
 """제재 등급(의무별 제재 표의 class)의 무거운 순서."""
 NOTE = "법률 자문이 아닙니다. 검토가 필요한 곳을 고를 뿐입니다."
+SANCTION_NOTE = "법에 적힌 최대 제재입니다. 위반 판정이 아니며, 실제 부과는 위반 사실과 규모에 따라 다릅니다."
+HEAVY = ("징역", "과징금")
+TITLE_MIN = 16
+"""제목에 남기는 가장 작은 폭. '어기면 · …'을 붙여 이보다 좁아지면 그것을 다음 줄로 내린다(80칸 창)."""
 GOODS = "특정 품목을 판다면 확인할 것"
 
 
@@ -62,6 +70,11 @@ def render(doc: dict, saved: str | Path | None, color: bool, cols: int | None, u
             text = fit(text, cols, g.more)
         lines.append((text, style))
 
+    def note(text: str) -> None:
+        """자르지 않고 폭에 맞춰 줄을 나눈다(주의 문구)."""
+        for line in wrap(text, cols) if cols is not None else [text]:
+            lines.append((line, "dim"))
+
     asked = len(run.get("questions", []))
     usd = run.get("usd_estimate", 0)
     add(f"{g.done} 검토 끝{dot}{clock(run.get('seconds', 0))}{dot}어림 ${usd:.2f}{dot}질문 {asked}개", "bold")
@@ -72,18 +85,34 @@ def render(doc: dict, saved: str | Path | None, color: bool, cols: int | None, u
         if counts[s]:
             add(f"  {pad(STATUS_LABEL[s], label_w)}  {counts[s]:>3}", "bold" if s in TO_CHECK else None)
     todo = [c for c in checklist if c["status"] in TO_CHECK]
-    n = 0
+    sections, n = [], 0
     for s in TO_CHECK:
         items = sorted((c for c in todo if c["status"] == s and c.get("group") != "goods"), key=order_key)
         goods = [c for c in todo if c["status"] == s and c.get("group") == "goods"]
-        if not items and not goods:
-            continue
-        add()
-        add(f"{STATUS_LABEL[s]} ({len(items) + len(goods)})", "bold")
+        rows = []
         for c in items:
             n += 1
-            law = f"{clean(law_short(c))} {article(c.get('article', ''))}"
-            add(f"  {n:>2}  {law}{dot}{clean(title(c.get('title', '')))}")
+            sanction = c.get("sanction")
+            heavy = bool(sanction) and sanction.get("class") in HEAVY
+            head = f"{'!!' if heavy else '  '}{n:>2}  {clean(law_short(c))} {article(c.get('article', ''))}{dot}"
+            tail = f"  어기면{dot}{clean(sanction['label'])}" if sanction else ""
+            rows.append((c, head, clean(title(c.get("title", ""))), tail, "heavy" if heavy else None))
+        if rows or goods:
+            sections.append((s, rows, goods))
+    # '어기면 · …'은 모든 줄에 제목이 TITLE_MIN 칸 넘게 남을 때만 줄 끝에 둔다. 아니면 모두 다음 줄(한 모양으로)
+    rows_ = [r for _, rows, _ in sections for r in rows if r[3]]
+    inline = cols is None or all(cols - width(head) - width(tail) >= TITLE_MIN for _, head, _, tail, _ in rows_)
+    for s, rows, goods in sections:
+        add()
+        add(f"{STATUS_LABEL[s]} ({len(rows) + len(goods)})", "bold")
+        for c, head, name, tail, style in rows:
+            if inline:
+                room = None if cols is None else cols - width(head) - width(tail)
+                add(head + (name if room is None else fit(name, room, g.more)) + tail, style)
+            else:
+                add(head + name, style)
+                if tail:
+                    add(f"      {tail.strip()}", style)
             cite = next((x for x in c.get("citations", []) if x.get("ok")), None)
             if cite:
                 where = f"{cite['file']}:{cite['line']}" if cite.get("line") else cite["file"]
@@ -93,5 +122,7 @@ def render(doc: dict, saved: str | Path | None, color: bool, cols: int | None, u
     add()
     if saved:
         add(home(saved), lead="전체 결과(JSON): ")
-    add(NOTE, "dim")
+    if any(c.get("sanction") for c in todo):
+        note(SANCTION_NOTE)
+    note(NOTE)
     return "".join((f"\x1b[{SGR[s]}m{t}\x1b[0m" if color and s and t else t) + "\n" for t, s in lines)
